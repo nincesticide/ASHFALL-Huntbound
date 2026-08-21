@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+// Art-only deterministic generator. It never reads or writes authoritative gameplay/session code.
 
 const fs=require('fs'),path=require('path');
 const ROOT=path.resolve(__dirname,'..');
