@@ -11,16 +11,26 @@ on:
       - tools/verify-approved-ash-goblin-v1.cjs
       - tools/approved-ash-goblin-trigger.txt
       - .github/workflows/materialize-approved-ash-goblin-v1.yml
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - codex/v014-source-migration
+    paths:
+      - assets/monsters/common/ash_goblin/**
+      - tools/apply-approved-ash-goblin-v1.cjs
+      - tools/verify-approved-ash-goblin-v1.cjs
+      - .github/workflows/materialize-approved-ash-goblin-v1.yml
 
 permissions:
   contents: write
 
 concurrency:
-  group: approved-ash-goblin-v1
+  group: approved-ash-goblin-v1-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: false
 
 jobs:
   integrate-and-verify:
+    if: github.actor != 'ashfall-art-bot'
     runs-on: ubuntu-latest
     steps:
       - name: Check out isolated art branch
