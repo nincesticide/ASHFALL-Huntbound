@@ -1,4 +1,4 @@
-# ASHFALL / Huntbound — v0.14.0 Open World
+# ASHFALL / Huntbound — v0.14.1 Battlefield HUD
 
 Canonical split-source development package for ASHFALL.
 
@@ -17,3 +17,8 @@ Canonical split-source development package for ASHFALL.
 - `assets/` — extracted sprites/textures previously embedded as base64
 
 The source is intentionally only split at the asset/CSS/JS boundary for the first migration. Future refactors should split `game.js` subsystem-by-subsystem while keeping behavior and saves stable.
+
+
+## Battlefield HUD v0.14.1
+
+The canonical source includes the battlefield-first HUD: bottom combat dock, compact target frame, collapsible objectives, optional Hunt Map, and closed-by-default utility drawers.
