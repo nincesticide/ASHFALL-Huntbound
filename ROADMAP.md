@@ -340,11 +340,12 @@ Keep these working, but do not add substantial content until the vertical slice 
 - **Prove multiplayer authority:** a feature is not multiplayer-complete until host, guest, reconnect, settlement, and failure paths are tested.
 - **Use measurable gates:** a milestone advances because its exit criteria pass, not because its feature list has been started.
 - **Preserve art direction:** extend the current sprite language and dark-fantasy presentation rather than replacing it wholesale.
+- **Remain free until separately approved:** use only existing included/free resources during the foundation; throttle, degrade, or pause an online feature before enabling a service or quota overage that can create a charge.
 
 ## Immediate execution order
 
 1. Freeze the canonical v0.14 source/release relationship and critical compatibility wiring with dependency-free invariants. **Completed for this foundation checkpoint; runtime fixtures follow.**
-2. Inventory the v0.14 gameplay monolith by subsystem and document current persistence schemas, including the separate private Site relay/deployment source.
+2. Inventory the v0.14 gameplay monolith by subsystem and document current persistence schemas, including the now-versioned private Site relay/deployment boundary. **Completed for this foundation checkpoint; extraction follows.**
 3. Build save fixtures and golden-path runtime coverage for the critical vertical-slice transitions.
 4. Introduce seeded authoritative randomness and deterministic replay for one complete hunt.
 5. Extract simulation, content, rendering, UI, persistence, and networking behind stable interfaces.

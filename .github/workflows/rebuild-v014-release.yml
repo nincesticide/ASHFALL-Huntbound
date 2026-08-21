@@ -7,10 +7,12 @@ on:
       - css/game.css
       - js/game.js
       - assets/**
+      - site/**
       - release/ASHFALL_Huntbound_Alpha_v0.14.0_Open_World.html
       - package.json
       - tests/**
       - scripts/build-bundle.mjs
+      - scripts/materialize-site.mjs
       - .github/workflows/rebuild-v014-release.yml
   push:
     branches:
@@ -21,10 +23,12 @@ on:
       - css/game.css
       - js/game.js
       - assets/**
+      - site/**
       - release/ASHFALL_Huntbound_Alpha_v0.14.0_Open_World.html
       - package.json
       - tests/**
       - scripts/build-bundle.mjs
+      - scripts/materialize-site.mjs
       - .github/workflows/rebuild-v014-release.yml
   workflow_dispatch:
 
@@ -42,6 +46,13 @@ jobs:
           node-version: 22
       - name: Verify submitted source and release parity without rewriting
         run: npm test
+      - name: Materialize and verify the private Site runtime
+        run: |
+          site_output="$RUNNER_TEMP/ashfall-site"
+          node scripts/materialize-site.mjs --out "$site_output"
+          cd "$site_output"
+          npm run install:ci
+          npm test
 
   verify-and-bundle:
     if: github.event_name != 'pull_request' && github.actor != 'github-actions[bot]'
@@ -61,6 +72,13 @@ jobs:
         run: npm run build
       - name: Run source and release invariants
         run: npm test
+      - name: Materialize and verify the private Site runtime
+        run: |
+          site_output="$RUNNER_TEMP/ashfall-site"
+          node scripts/materialize-site.mjs --out "$site_output"
+          cd "$site_output"
+          npm run install:ci
+          npm test
       - name: Commit refreshed artifact
         run: |
           if git diff --quiet -- release/ASHFALL_Huntbound_Alpha_v0.14.0_Open_World.html; then

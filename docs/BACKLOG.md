@@ -29,8 +29,17 @@ Unless a row says otherwise, “passes” means the split-source build and bundl
 | Later | Split the monolithic game file subsystem-by-subsystem. | No individual gameplay module exceeds the agreed size threshold; circular dependencies are absent; parity tests cover the extracted behavior. |
 | Online-gated | Accounts, cloud characters, and durable cross-device progression. | The same authenticated hunter loads on two browsers; concurrent updates cannot duplicate or overwrite items/currency; server audit history exists. |
 | Preserve | Canonical v0.14 open-world identity, six classes, local save key compatibility, fixed logical canvas, and existing art direction. | Regression fixtures and visual smoke tests prove these remain available after each structural change. |
+| Preserve | Zero-additional-cost foundation until the owner separately approves spending. | No change enables a paid service, billable overage, marketplace product, or public infrastructure by assumption; quota pressure causes backoff, degradation, or a disabled prototype path instead. |
 | Freeze | New broad systems while simulation extraction is incomplete. | No new system enters production without a pure rule boundary, save migration, and at least one automated behavior test. |
 | Defer | Wholesale engine/framework rewrite. | Reconsider only if measured browser, maintainability, or networking limits cannot be solved by modular extraction. |
+
+Completed foundation checkpoint — 2026-08-21:
+
+- Versioned the private Site shell, Worker, D1 relay schema/migration, hosting manifest, locked build, and deployment assets under `site/`.
+- Added a dependency-free, guarded materializer and byte-parity coverage for the split game and all 57 assets.
+- Reduced idle relay polling, removed client room deletion, stopped per-request schema DDL, limited cleanup frequency, and moved new rooms to six-character codes.
+- Recorded the observed subsystem and persistence/runtime schemas in `docs/SYSTEM_INVENTORY.md` and `docs/PERSISTENCE_SCHEMAS.md`.
+- Preserved the owner-only Site policy and zero-additional-cost constraint.
 
 ## World
 

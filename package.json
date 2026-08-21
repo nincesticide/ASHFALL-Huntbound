@@ -7,9 +7,11 @@
   "scripts": {
     "build": "node scripts/build-bundle.mjs",
     "build:check": "node scripts/build-bundle.mjs --check",
+    "site:materialize": "node scripts/materialize-site.mjs",
     "test:source": "node --check js/game.js && node --test tests/source-invariants.test.mjs",
     "test:release": "node --test tests/release-bundle.test.mjs",
-    "test": "npm run test:source && npm run test:release"
+    "test:site": "node --test tests/site-runtime.test.mjs",
+    "test": "npm run test:source && npm run test:release && npm run test:site"
   },
   "engines": {
     "node": ">=20"

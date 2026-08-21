@@ -157,3 +157,21 @@ test("surface encounter clicks target the exact tile and preserve the auto-attac
   assert.match(skirmishFlow, /if\(autoAttack&&attacker&&target\)\{hostCommand\(/);
   assert.match(skirmishFlow, /action:\{type:'attack'/);
 });
+
+test("the private relay client uses six-character rooms and free-quota-aware polling", () => {
+  const transportFlow = sourceBetween(
+    "let remoteTransportV141=",
+    "let combatMeterMode=",
+  );
+  assert.doesNotMatch(transportFlow, /method:'DELETE'/);
+  assert.match(transportFlow, /nextPollDelay=Math\.min\(900,260\+state\.idlePolls\*90\)/);
+  assert.match(transportFlow, /state\.connected\?state\.nextPollDelay:1500/);
+  assert.match(
+    gameSource,
+    /const ROOM_CODE_ALPHABET_V143='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';/,
+  );
+  assert.match(
+    gameSource,
+    /crypto\.getRandomValues\(new Uint8Array\(6\)\)/,
+  );
+});

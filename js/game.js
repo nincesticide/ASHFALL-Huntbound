@@ -621,18 +621,18 @@ const peerId=sessionStorage.getItem(SESSION_PEER)||uid();sessionStorage.setItem(
 
 let soundOn=true,audio=null,bc=null,isHost=false,roomCode=null,selectedMission='frontier';
 let profile=null,room=null,snapshot=null,lastSummary=null,moveSaveTimer=null,selectedTargetId=null,selectedPartId=null;
-let remoteTransportV141={room:null,cursor:0,controller:null,ready:Promise.resolve(),connected:false};
+let remoteTransportV141={room:null,cursor:0,controller:null,ready:Promise.resolve(),connected:false,idlePolls:0,nextPollDelay:180};
 const transportSeenV141=new Set(),transportSeenOrderV141=[];
 
 function rememberTransportEventV141(id){if(!id||transportSeenV141.has(id))return false;transportSeenV141.add(id);transportSeenOrderV141.push(id);while(transportSeenOrderV141.length>900)transportSeenV141.delete(transportSeenOrderV141.shift());return true}
 function receiveTransportEventV141(event){if(!event)return;const id=event._transportId;if(id&&!rememberTransportEventV141(id))return;onNetwork(event)}
 function setRemoteTransportStatusV141(connected){remoteTransportV141.connected=connected;document.body.classList.toggle('remote-mp-v141',connected);const badge=$('roomBadge');if(badge)badge.title=connected?'Remote multiplayer relay connected':'Local tab multiplayer fallback active'}
-function stopRemoteTransportV141(){remoteTransportV141.controller?.abort();remoteTransportV141={room:null,cursor:0,controller:null,ready:Promise.resolve(),connected:false};setRemoteTransportStatusV141(false)}
-async function remotePostV141(event,code=remoteTransportV141.room){if(!code)return;try{await remoteTransportV141.ready;await fetch('/api/multiplayer',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({room:code,event}),credentials:'same-origin',keepalive:true});setRemoteTransportStatusV141(true)}catch(err){if(err?.name!=='AbortError')setRemoteTransportStatusV141(false)}}
-function startRemoteTransportV141(code,reset=false){
-  stopRemoteTransportV141();const controller=new AbortController(),state={room:code,cursor:0,controller,ready:null,connected:false};remoteTransportV141=state;
-  state.ready=(async()=>{try{if(reset)await fetch(`/api/multiplayer?room=${encodeURIComponent(code)}`,{method:'DELETE',credentials:'same-origin',signal:controller.signal});const res=await fetch(`/api/multiplayer?room=${encodeURIComponent(code)}&since=0`,{credentials:'same-origin',cache:'no-store',signal:controller.signal});if(!res.ok)throw new Error(`relay ${res.status}`);const data=await res.json();state.cursor=data.cursor||0;(data.events||[]).forEach(row=>receiveTransportEventV141(row.event));setRemoteTransportStatusV141(true)}catch(err){if(err?.name!=='AbortError')setRemoteTransportStatusV141(false)}})();
-  state.ready.then(async()=>{while(remoteTransportV141===state&&state.room===code&&!controller.signal.aborted){try{const res=await fetch(`/api/multiplayer?room=${encodeURIComponent(code)}&since=${state.cursor}`,{credentials:'same-origin',cache:'no-store',signal:controller.signal});if(!res.ok)throw new Error(`relay ${res.status}`);const data=await res.json();for(const row of data.events||[]){state.cursor=Math.max(state.cursor,row.id||0);receiveTransportEventV141(row.event)}setRemoteTransportStatusV141(true)}catch(err){if(err?.name==='AbortError')break;setRemoteTransportStatusV141(false)}await new Promise(resolve=>setTimeout(resolve,state.connected?180:650))}})
+function stopRemoteTransportV141(){remoteTransportV141.controller?.abort();remoteTransportV141={room:null,cursor:0,controller:null,ready:Promise.resolve(),connected:false,idlePolls:0,nextPollDelay:180};setRemoteTransportStatusV141(false)}
+async function remotePostV141(event,code=remoteTransportV141.room){if(!code)return;try{await remoteTransportV141.ready;await fetch('/api/multiplayer',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({room:code,event}),credentials:'same-origin',keepalive:true});remoteTransportV141.idlePolls=0;remoteTransportV141.nextPollDelay=180;setRemoteTransportStatusV141(true)}catch(err){if(err?.name!=='AbortError')setRemoteTransportStatusV141(false)}}
+function startRemoteTransportV141(code){
+  stopRemoteTransportV141();const controller=new AbortController(),state={room:code,cursor:0,controller,ready:null,connected:false,idlePolls:0,nextPollDelay:180};remoteTransportV141=state;
+  state.ready=(async()=>{try{const res=await fetch(`/api/multiplayer?room=${encodeURIComponent(code)}&since=0`,{credentials:'same-origin',cache:'no-store',signal:controller.signal});if(!res.ok)throw new Error(`relay ${res.status}`);const data=await res.json(),events=data.events||[];state.cursor=data.cursor||0;events.forEach(row=>receiveTransportEventV141(row.event));state.idlePolls=events.length?0:1;state.nextPollDelay=events.length?180:350;setRemoteTransportStatusV141(true)}catch(err){if(err?.name!=='AbortError')setRemoteTransportStatusV141(false)}})();
+  state.ready.then(async()=>{while(remoteTransportV141===state&&state.room===code&&!controller.signal.aborted){try{const res=await fetch(`/api/multiplayer?room=${encodeURIComponent(code)}&since=${state.cursor}`,{credentials:'same-origin',cache:'no-store',signal:controller.signal});if(!res.ok)throw new Error(`relay ${res.status}`);const data=await res.json(),events=data.events||[];for(const row of events){state.cursor=Math.max(state.cursor,row.id||0);receiveTransportEventV141(row.event)}if(events.length){state.idlePolls=0;state.nextPollDelay=180}else{state.idlePolls++;state.nextPollDelay=Math.min(900,260+state.idlePolls*90)}setRemoteTransportStatusV141(true)}catch(err){if(err?.name==='AbortError')break;state.nextPollDelay=1500;setRemoteTransportStatusV141(false)}await new Promise(resolve=>setTimeout(resolve,state.connected?state.nextPollDelay:1500))}})
 }
 
 let combatMeterMode='damage',combatFloaters=[],combatFeed=[],worldFx=[],screenShakeUntil=0,screenShakePower=0;
@@ -1829,14 +1829,15 @@ function createCharacter(){
   const name=$('newName').value.trim()||'Hunter';const p=newProfile(name,creatingClass);const ps=loadProfiles();ps[p.id]=p;saveProfiles(ps);selectProfile(p.id)
 }
 
-function roomCodeGen(){return Math.random().toString(36).slice(2,6).toUpperCase()}
+const ROOM_CODE_ALPHABET_V143='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+function roomCodeGen(){const bytes=crypto.getRandomValues(new Uint8Array(6));return Array.from(bytes,b=>ROOM_CODE_ALPHABET_V143[b%ROOM_CODE_ALPHABET_V143.length]).join('')}
 function playerJoinPayload(){
   const m=masteryLevel(profile.classMastery[profile.classId]||0),sx=profile.skillXp[profile.classId]||{s1:0,s2:0};
   return{peerId,name:profile.name,classId:profile.classId,level:profile.level,mastery:m,gearRating:gearRating(profile),gearTraits:equippedGearTraitsV10(profile),talents:profile.talents||[],ascentNodes:profile.ascentNodes||[],power:profilePower(profile),relicPowers:equippedRelicPowers(profile),skillLevels:{s1:skillLevel(sx.s1),s2:skillLevel(sx.s2)},monsterMastery:profile.monsterMastery||{},selectedSpec:profile.selectedSpec,ascension:profile.ascension||0,nemesisSeed:topNemesis(profile),deathCache:profile.deathCache,dropPity:profile.dropPity||{relic:0,mythic:0},trophies:profile.trophies||[],title:profile.selectedTitle||'Hunter',autoPotionV131:!!profile.autoPotionV131,ready:false,campX:14,campY:15,facing:'south',prep:{}}
 }
 function setupChannel(code){
   if(bc)bc.close();roomCode=code.toUpperCase();bc=new BroadcastChannel('ashfall-mp-'+roomCode);
-  bc.onmessage=e=>receiveTransportEventV141(e.data);startRemoteTransportV141(roomCode,isHost);
+  bc.onmessage=e=>receiveTransportEventV141(e.data);startRemoteTransportV141(roomCode);
   $('roomChoice').style.display='none';$('roomPanel').style.display='block';$('roomCodeText').textContent=roomCode;$('roomBadge').textContent=`Room ${roomCode}`;
 }
 

@@ -2,6 +2,8 @@
 
 Status: **proposed direction for technical spikes; no backend vendor or framework is locked**.
 
+Current cost constraint: **the foundation remains zero-additional-cost until the owner separately approves spending**. The existing private Site and its managed D1 binding may be used within included quotas; the prototype must back off, degrade, or pause before a paid service or quota overage is enabled.
+
 Canonical gameplay baseline: **ASHFALL / Huntbound v0.14.0 — Open World**.
 
 ## Purpose
@@ -26,7 +28,7 @@ A four-player private room is not an MMO. “Extraction” should be qualified a
 
 The current implementation is useful for private testing but is not a production multiplayer backend.
 
-The relay handler, D1 schema, private Site shell, and hosting configuration currently live in the separate ChatGPT Site workspace rather than this canonical game-client repository. Bringing that deployment source under the same versioned, reproducible build is Stage 0 foundation work; until then, a repository clone reproduces local/same-browser play but not the hosted cross-browser relay.
+The relay handler, D1 schema/migration, private Site shell, locked build, and logical hosting configuration are versioned under `site/`. `scripts/materialize-site.mjs` produces the deployable tree and injects the canonical root game source, so the Site no longer owns a second editable game copy. The physical D1 resource, access policy, and deployment history remain Sites control-plane state and cannot be reproduced from Git alone.
 
 ### Current client authority
 
@@ -46,11 +48,11 @@ The Site relay stores JSON events in a D1 `multiplayer_events` table:
 
 - `GET` polls events after a numeric cursor.
 - `POST` appends an event up to 220 KB.
-- `DELETE` removes every event for a room code.
 - Old events expire after two hours.
-- The client polls approximately every 180 ms while healthy and every 650 ms after an error.
+- The client polls at approximately 180 ms immediately after activity, backs off to at most 900 ms while idle, and waits 1.5 seconds after an error.
+- Expired-row cleanup is limited to approximately once per minute per warm Worker isolate instead of running on every relay request.
 - Full room snapshots are frequently transmitted.
-- Room codes are four base-36 characters when created by the current client.
+- New rooms use six characters drawn from an unambiguous 32-character alphabet.
 
 ### Security and reliability limitations
 
@@ -63,8 +65,8 @@ The Site relay stores JSON events in a D1 `multiplayer_events` table:
 - No rate limits, presence lease, reconnect reservation, host migration, or authoritative checkpoint.
 - Any client-owned profile, gear, stat, score, or settlement can be modified locally.
 - Host loss ends authority for the room.
-- Relay cleanup and room deletion are not owner-authorized.
-- Polling and repeated full snapshots create unnecessary database and bandwidth load.
+- The relay has no authenticated room-administration operation; stale rows rely on time-based expiry.
+- Polling and repeated full snapshots still create avoidable database and bandwidth load despite the free-quota backoff.
 - In-memory client deduplication disappears on reload.
 
 These limitations should be documented, not hidden. The relay can remain as a private-preview compatibility path while its replacement is built.

@@ -1,8 +1,10 @@
 # ASHFALL / Huntbound — v0.14.0 Open World
 
-Canonical split-source game client and QA release package for ASHFALL. The current ChatGPT Site shell, D1 relay handler, and hosting configuration still live in the private Site workspace and must be migrated here before this repository can reproduce cross-browser hosting by itself.
+Canonical split-source game client, QA release package, and private ChatGPT Site runtime for ASHFALL. The Site shell, D1 relay schema/migration, locked build, and logical hosting configuration are versioned under `site/`; the physical managed resource and private access policy remain Sites control-plane state.
 
 See [ROADMAP.md](ROADMAP.md) for the approved product direction and milestone gates, [docs/BACKLOG.md](docs/BACKLOG.md) for categorized work and acceptance criteria, and [docs/ONLINE_ARCHITECTURE.md](docs/ONLINE_ARCHITECTURE.md) for the proposed path to authoritative online play.
+
+The observed v0.14 implementation is recorded in [docs/SYSTEM_INVENTORY.md](docs/SYSTEM_INVENTORY.md), with current browser, runtime, item, run, settlement, and relay shapes in [docs/PERSISTENCE_SCHEMAS.md](docs/PERSISTENCE_SCHEMAS.md).
 
 ## v0.14 foundation
 
@@ -29,6 +31,9 @@ See [ROADMAP.md](ROADMAP.md) for the approved product direction and milestone ga
 - `css/game.css` — game UI and presentation
 - `js/game.js` — current gameplay source
 - `assets/` — extracted sprites/textures previously embedded as base64
+- `site/` — versioned private Site shell, worker, relay, migration, and locked build; `public/game` is generated from root source
+- `scripts/materialize-site.mjs` — safely produces a complete deployable Site tree without creating a second editable game source
+- `migration_manifest.json` — historical record of the original bundled-HTML extraction; its source-size fields are provenance, not live build metrics
 
 The source is intentionally only split at the asset/CSS/JS boundary for the first migration. Future refactors should split `game.js` subsystem-by-subsystem while keeping behavior and saves stable.
 
@@ -41,3 +46,9 @@ directly from the split source and embeds all 57 canonical assets.
 Run `npm test` to check syntax, the stable save key and ten-slot definitions, critical world-return and interaction source wiring, v0.14 asset integrity, and release parity. These are regression invariants, not functional save-migration or browser-play tests. Run `npm run build` after changing split source or assets.
 
 The exact-57 asset invariant intentionally freezes the canonical v0.14 manifest. A later milestone that adds art must update the manifest expectation and content version deliberately; it must not weaken the existing-file checks silently.
+
+## Private Site reproduction
+
+Run `npm run site:materialize -- --out <empty-directory>` to combine `site/` with the canonical game source. The materializer is dependency-free, rejects broad/nonempty destinations unless explicitly forced, and is covered by byte-parity tests. The Site remains owner-only unless the owner separately approves an access-policy change.
+
+The current relay stays within the existing free-only architecture: no R2, paid database, hosted game server, marketplace service, or external authentication vendor. Polling now backs off while idle, new rooms use six-character codes, and schema DDL no longer runs on every request. Provider quotas can change, so any change capable of creating a charge still requires explicit approval.
