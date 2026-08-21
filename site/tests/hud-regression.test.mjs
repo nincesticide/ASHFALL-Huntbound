@@ -16,8 +16,9 @@ test("combat controls use a compact six-command bar with accessible shortcuts", 
   const compactLayer = cssSource.slice(cssSource.indexOf("v0.14.8 CONTEXT-AWARE COMBAT COMMAND BAR"));
   assert.match(compactLayer, /grid-template-columns:repeat\(6,54px\)!important/);
   assert.match(compactLayer, /grid-template-columns:repeat\(6,52px\)!important/);
-  assert.doesNotMatch(compactLayer, /grid-template-columns:repeat\(3,/);
   assert.match(compactLayer, /body\.mode-run-v141 \.prompt\{display:none!important\}/);
+  const battlefieldLayer = cssSource.slice(cssSource.indexOf("v0.15.0 BATTLEFIELD-FIRST HUD"));
+  assert.match(battlefieldLayer, /\.command-bar-v149 \.actions\{grid-template-columns:repeat\(6,53px\)!important/);
 
   for (const [id, key] of [
     ["attackBtn", "1"],
@@ -52,9 +53,42 @@ test("field HUD keeps the radar visible while secondary panels stay opt-in", () 
   assert.match(gameSource, /else if\(mode==='camp'\)\{setHudPanelV141\('party',false\);setHudPanelV141\('intel',false\)\}/);
   assert.match(cssSource, /body\.mode-run-v141 #targetBadge\{display:none\}/);
   assert.match(cssSource, /\.hud-drawer-v141\.radar-panel-v149\{display:block!important/);
-  assert.match(cssSource, /\.radar-panel-v149 canvas\.minimap\{width:126px!important;height:78px!important/);
+  assert.match(cssSource, /\.radar-panel-v149 canvas\.minimap\{width:100px!important;height:62px!important/);
   assert.match(cssSource, /#hudDockV132\{display:none!important\}/);
   assert.match(cssSource, /\.combat-vitals-bars-v149\{display:grid;grid-template-columns:1fr 1fr/);
+});
+
+test("Deep Hunt route data is removed from ordinary combat and opens only in the Hunt Map", () => {
+  const commandStart = indexSource.indexOf('class="panel actions-panel-v141 command-bar-v148 command-bar-v149"');
+  const commandEnd = indexSource.indexOf('class="deep-summary-v150"', commandStart);
+  const commandMarkup = indexSource.slice(commandStart, commandEnd);
+  assert.notEqual(commandStart, -1);
+  assert.notEqual(commandEnd, -1);
+  assert.match(commandMarkup, /id="pathPanel"/);
+  assert.doesNotMatch(commandMarkup, /id="expeditionPanel"/);
+  assert.match(indexSource, /id="huntMapOverlayV150" aria-hidden="true"/);
+  assert.match(indexSource, /id="expeditionPanel" class="expeditionpanel"/);
+  assert.match(indexSource, /id="huntMapBtnV150"[^>]+aria-keyshortcuts="M"/);
+  assert.match(gameSource, /function setHuntMapV150\(open\)/);
+  assert.match(gameSource, /if\(huntMapOpenV150&&\(e\.key==='Escape'\|\|key==='m'\)\)/);
+  assert.match(gameSource, /if\(run\?\.deepHunt\?\.active&&key==='m'\)/);
+  assert.match(cssSource, /\.hunt-map-overlay-v150\{[^}]*display:none/);
+  assert.match(cssSource, /\.hunt-map-overlay-v150\.show\{display:grid\}/);
+});
+
+test("route decisions, objectives, player vitals, and bosses stay in edge-mounted presentation", () => {
+  assert.match(gameSource, /\(run\.pathChoices\|\|\[\]\)\.slice\(0,3\)/);
+  assert.match(gameSource, /DANGER \+\$\{danger\}%/);
+  assert.match(gameSource, /QUICK ACTION — DOES NOT END TURN/);
+  assert.match(indexSource, /id="combatStatusEffectsV150"/);
+  assert.match(indexSource, /id="bossCombatHudV150"/);
+  assert.match(indexSource, /id="objectiveTrackerV150"/);
+  assert.match(cssSource, /\.objective-tracker-v150\{position:absolute;left:10px;top:83px/);
+  assert.match(cssSource, /\.boss-combat-hud-v150\{display:none;position:absolute;left:50%;top:44px/);
+  assert.match(cssSource, /\.command-bar-v149\{bottom:7px!important;width:390px!important/);
+  assert.match(cssSource, /flex:0 0 30px!important;width:30px!important;min-width:30px!important/);
+  assert.doesNotMatch(gameSource, /\n\s*drawBossHealthBar\(run\);/);
+  assert.match(gameSource, /setHudPanelV141\('party',false\);setHudPanelV141\('intel',false\);setHudPanelV141\('meters',false\);setHudPanelV141\('loot',false\);setHudPanelV141\('log',false\)/);
 });
 
 test("world clock and reusable equipment objects exercise the physical inventory loop", () => {

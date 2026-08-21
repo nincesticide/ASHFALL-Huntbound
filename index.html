@@ -11,9 +11,9 @@
   <div class="header">
     <div><div class="logo">ASHFALL</div><div class="version">HUNTBOUND v0.14.0 // OPEN WORLD // EXPLORE • HUNT • DELVE • FORGE</div></div>
     <div class="header-actions">
-      <button id="profileBtn">Character</button>
-      <button id="soundBtn">Sound: On</button>
-      <button id="titleBtn">Leave Room</button>
+      <button id="profileBtn" class="edge-control-v150" title="Character" aria-label="Open Character"><span aria-hidden="true">♜</span><span class="sr-only-v150">Character</span></button>
+      <button id="soundBtn" class="edge-control-v150" title="Sound on" aria-label="Sound on" aria-pressed="true"><span aria-hidden="true">♪</span><span class="sr-only-v150">Sound on</span></button>
+      <button id="titleBtn" class="edge-control-v150" title="Leave room" aria-label="Leave room"><span aria-hidden="true">↗</span><span class="sr-only-v150">Leave room</span></button>
     </div>
   </div>
 
@@ -55,11 +55,11 @@
         <div class="world-clock-readout-v149"><b id="worldClockTimeV149">07:00</b><span id="worldClockPhaseV149">DAWN</span></div>
       </div>
       <div class="hud-controls-v141" id="hudControlsV141" aria-label="HUD panels">
-        <button type="button" data-hud-toggle="party" aria-pressed="false">Party</button>
-        <button type="button" data-hud-toggle="intel" aria-pressed="false">Map</button>
-        <button type="button" data-hud-toggle="meters" aria-pressed="false">Meters</button>
-        <button type="button" data-hud-toggle="loot" aria-pressed="false">Loot</button>
-        <button type="button" data-hud-toggle="log" aria-pressed="false">Log</button>
+        <button type="button" data-hud-toggle="party" aria-pressed="false" title="Party"><span aria-hidden="true">♟</span><span class="sr-only-v150">Party</span></button>
+        <button type="button" id="huntMapBtnV150" aria-pressed="false" aria-keyshortcuts="M" title="Hunt Map (M)"><span aria-hidden="true">⌘</span><span class="sr-only-v150">Hunt Map</span></button>
+        <button type="button" data-hud-toggle="loot" aria-pressed="false" title="Run loot"><span aria-hidden="true">◇</span><span class="sr-only-v150">Loot</span></button>
+        <button type="button" data-hud-toggle="meters" aria-pressed="false" title="Combat meters"><span aria-hidden="true">▥</span><span class="sr-only-v150">Meters</span></button>
+        <button type="button" data-hud-toggle="log" aria-pressed="false" title="Expedition log"><span aria-hidden="true">☷</span><span class="sr-only-v150">Log</span></button>
       </div>
 
       <div class="overlay show" id="titleOverlay">
@@ -314,8 +314,15 @@
         <div id="targetInfo" class="targetpanel" tabindex="0" aria-label="Current target. Hover or focus for details.">Target: automatic nearest enemy. Click an enemy to focus it.</div>
       </div>
 
+      <div class="boss-combat-hud-v150" id="bossCombatHudV150" aria-live="assertive" aria-label="Boss status">
+        <div class="boss-combat-line-v150"><span id="bossCombatPhaseV150">PHASE 1</span><b id="bossCombatNameV150">HUNT TARGET</b><em id="bossCombatHpV150">—</em></div>
+        <div class="boss-combat-meter-v150"><i id="bossCombatFillV150"></i></div>
+        <div class="boss-combat-detail-v150"><span id="bossCombatPartsV150">ANATOMY —</span><strong id="bossCombatTelegraphV150">TRACKING</strong></div>
+      </div>
+
       <div class="panel actions-panel-v141 command-bar-v148 command-bar-v149" data-command-state="idle" aria-label="Combat commands">
         <div class="ptitle">Actions</div>
+        <div class="combat-status-effects-v150" id="combatStatusEffectsV150" aria-label="Combat status effects"></div>
         <div class="combat-vitals-v149" id="combatVitalsV149">
           <div class="combat-vitals-meta-v149"><b id="combatVitalsNameV149">NO HUNTER</b><span id="combatVitalsStateV149">EMBERWATCH</span><em id="combatVitalsGearV149">GR 0</em></div>
           <div class="combat-vitals-bars-v149">
@@ -340,19 +347,38 @@
           <button id="descendBtn">Push Deeper</button>
         </div>
         <div id="pathPanel" class="pathpanel" style="display:none"></div>
-        <div id="expeditionPanel" class="expeditionpanel" style="display:none"></div>
         <div class="action-help">Hover an action for live damage, healing, range, cost, and effects.</div>
+      </div>
+
+      <div class="deep-summary-v150" id="deepSummaryV150" hidden aria-label="Deep Hunt summary">
+        <span><small>DEPTH</small><b id="deepSummaryDepthV150">—</b></span>
+        <span><small>HEAT</small><b id="deepSummaryHeatV150">—</b></span>
+        <span><small>SPOOR</small><b id="deepSummarySpoorV150">—</b></span>
+        <span class="deep-extract-v150"><small>EXTRACT</small><b id="deepSummaryExtractV150">LOCKED</b></span>
+        <button type="button" id="deepSummaryMapBtnV150" aria-keyshortcuts="M" title="Open Hunt Map (M)">MAP <kbd>M</kbd></button>
+      </div>
+
+      <div class="objective-tracker-v150" id="objectiveTrackerV150">
+        <button type="button" id="objectiveToggleV150" aria-expanded="true" title="Collapse objectives"><span>OBJECTIVES</span><i aria-hidden="true">−</i></button>
+        <div id="objectiveLines" class="objective-lines">Explore camp and choose a hunt.</div>
       </div>
 
       <div class="panel hud-drawer-v141 intel-panel-v141 radar-panel-v149 is-open" data-hud-panel="intel">
         <div class="ptitle"><span>Hunt Intel</span><span class="tiny">LIVE</span></div>
         <div class="minimap-wrap radar-frame-v149"><span class="radar-north-v149">N</span><canvas id="minimap" class="minimap" width="300" height="180"></canvas></div>
-        <div id="objectiveLines" class="objective-lines">Explore camp and choose a hunt.</div>
       </div>
 
       <div class="panel full hud-drawer-v141" data-hud-panel="log">
         <div class="ptitle">Expedition Log</div>
         <div id="log" class="log"></div>
+      </div>
+
+      <div class="hunt-map-overlay-v150" id="huntMapOverlayV150" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="huntMapTitleV150">
+        <div class="hunt-map-shell-v150">
+          <div class="hunt-map-head-v150"><div><span>DEEP HUNT NAVIGATION</span><h2 id="huntMapTitleV150">Hunt Map</h2></div><button type="button" id="huntMapCloseV150" aria-label="Close Hunt Map" title="Close Hunt Map (M or Escape)">×</button></div>
+          <div id="expeditionPanel" class="expeditionpanel"></div>
+          <div class="hunt-map-help-v150"><kbd>M</kbd> or <kbd>Esc</kbd> closes the map. The hunt remains paused at its current decision state.</div>
+        </div>
       </div>
     </div>
   </div>
