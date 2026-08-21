@@ -86,6 +86,7 @@ test("materializes the versioned Site runtime around the canonical v0.14 game", 
       "drizzle/0000_spooky_zombie.sql",
       "types/cloudflare-runtime.d.ts",
       "vite.config.ts",
+      "wrangler.preview.jsonc",
       "worker/index.ts",
     ];
     await Promise.all(

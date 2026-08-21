@@ -473,10 +473,31 @@ async function handleLeave(request: Request, db: MultiplayerEnv, userId: string,
     const next = await db.prepare(
       "SELECT peer_id AS peerId, user_id AS userId FROM multiplayer_members WHERE room_session_id = ? ORDER BY joined_at ASC, peer_id ASC LIMIT 1",
     ).bind(room.roomSessionId).first<{ peerId: string; userId: string }>();
-    if (next) await db.prepare(
-      `UPDATE multiplayer_rooms SET host_peer_id = ?, host_user_id = ?, authority_epoch = authority_epoch + 1,
-       lease_expires_at = ?, updated_at = ?, expires_at = ? WHERE room_code = ?`,
-    ).bind(next.peerId, next.userId, now + HOST_LEASE_MS, now, now + ROOM_TTL_MS, code).run();
+    if (next) {
+      const checkpoint = parseSnapshot(room.snapshotJson) as Record<string, unknown> | null;
+      let checkpointJson = room.snapshotJson;
+      let checkpointVersion = room.snapshotVersion;
+      let checkpointCursor = room.snapshotEventCursor;
+      if (checkpoint && !checkpoint.run && !checkpoint.worldV14) {
+        const players = checkpoint.players;
+        if (players && typeof players === "object" && !Array.isArray(players)) delete (players as Record<string, unknown>)[id];
+        checkpoint.hostPeerId = next.peerId;
+        checkpoint.authorityEpochV147 = room.authorityEpoch + 1;
+        checkpoint.protocolVersionV147 = PROTOCOL_VERSION;
+        checkpointVersion += 1;
+        checkpoint.networkSnapshotVersionV147 = checkpointVersion;
+        const stateVersion = Number(checkpoint.stateVersionV146);
+        checkpoint.stateVersionV146 = Number.isSafeInteger(stateVersion) ? stateVersion + 1 : 1;
+        checkpointJson = JSON.stringify(checkpoint);
+        checkpointCursor = await eventCursor(db, room.roomSessionId);
+      }
+      await db.prepare(
+        `UPDATE multiplayer_rooms SET host_peer_id = ?, host_user_id = ?, authority_epoch = authority_epoch + 1,
+         lease_expires_at = ?, snapshot_json = ?, snapshot_version = ?, snapshot_event_cursor = ?,
+         updated_at = ?, expires_at = ? WHERE room_code = ?`,
+      ).bind(next.peerId, next.userId, now + HOST_LEASE_MS, checkpointJson, checkpointVersion, checkpointCursor,
+        now, now + ROOM_TTL_MS, code).run();
+    }
   } else await db.prepare("UPDATE multiplayer_rooms SET updated_at = ?, expires_at = ? WHERE room_code = ?").bind(now, now + ROOM_TTL_MS, code).run();
   const refreshed = await readRoom(db, code);
   return json({ ok: true, closed: false, authority: refreshed ? await authorityPayload(db, refreshed, now, true) : null });

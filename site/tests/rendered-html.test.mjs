@@ -71,3 +71,18 @@ test("renders the ASHFALL game shell and canonical game entry", async () => {
   assert.match(gameHtml, /<link rel="stylesheet" href="css\/game\.css">/);
   assert.match(gameHtml, /<script src="js\/game\.js"><\/script>/);
 });
+
+test("agent preview migrates and shares its local multiplayer database", async () => {
+  const [packageJson, viteConfig, wranglerPreview] = await Promise.all([
+    readFile(new URL("../package.json", import.meta.url), "utf8").then(JSON.parse),
+    readFile(new URL("../vite.config.ts", import.meta.url), "utf8"),
+    readFile(new URL("../wrangler.preview.jsonc", import.meta.url), "utf8").then(JSON.parse),
+  ]);
+
+  assert.match(packageJson.scripts.dev, /wrangler d1 migrations apply DB --local/);
+  assert.match(packageJson.scripts.dev, /--persist-to \.wrangler\/state/);
+  assert.match(packageJson.scripts.dev, /--config wrangler\.preview\.jsonc/);
+  assert.match(viteConfig, /persistState: \{ path: "\.wrangler\/state" \}/);
+  assert.equal(wranglerPreview.d1_databases[0].binding, "DB");
+  assert.equal(wranglerPreview.d1_databases[0].migrations_dir, "drizzle");
+});

@@ -7,7 +7,7 @@
   },
   "scripts": {
     "install:ci": "bash scripts/install-ci.sh",
-    "dev": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vite",
+    "dev": "WRANGLER_LOG_PATH=.wrangler/wrangler.log wrangler d1 migrations apply DB --local --persist-to .wrangler/state --config wrangler.preview.jsonc && WRANGLER_LOG_PATH=.wrangler/wrangler.log vite",
     "build": "bash scripts/build-verified.sh",
     "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
     "typecheck": "tsc --noEmit",
