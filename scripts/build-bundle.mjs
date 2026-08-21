@@ -10,49 +10,81 @@ const outputPath = join(
   "ASHFALL_Huntbound_Alpha_v0.14.0_Open_World.html",
 );
 
-const [indexSource, cssSource, gameSource] = await Promise.all([
-  readFile(join(projectRoot, "index.html"), "utf8"),
-  readFile(join(projectRoot, "css", "game.css"), "utf8"),
-  readFile(join(projectRoot, "js", "game.js"), "utf8"),
-]);
+export async function buildBundleInMemory() {
+  const [indexSource, cssSource, gameSource] = await Promise.all([
+    readFile(join(projectRoot, "index.html"), "utf8"),
+    readFile(join(projectRoot, "css", "game.css"), "utf8"),
+    readFile(join(projectRoot, "js", "game.js"), "utf8"),
+  ]);
 
-const assetPattern = /assets\/asset_[0-9]+_[a-f0-9]+\.png/g;
-const assetPaths = [...new Set(`${cssSource}\n${gameSource}`.match(assetPattern) ?? [])];
-const embeddedAssets = new Map();
+  const assetPattern = /assets\/asset_[0-9]+_[a-f0-9]+\.png/g;
+  const assetPaths = [...new Set(`${cssSource}\n${gameSource}`.match(assetPattern) ?? [])];
+  const embeddedAssets = new Map();
 
-await Promise.all(
-  assetPaths.map(async (assetPath) => {
-    const bytes = await readFile(join(projectRoot, assetPath));
-    embeddedAssets.set(assetPath, `data:image/png;base64,${bytes.toString("base64")}`);
-  }),
-);
-
-const embedAssets = (source) =>
-  assetPaths.reduce(
-    (result, assetPath) => result.replaceAll(assetPath, embeddedAssets.get(assetPath)),
-    source,
+  await Promise.all(
+    assetPaths.map(async (assetPath) => {
+      const bytes = await readFile(join(projectRoot, assetPath));
+      embeddedAssets.set(assetPath, `data:image/png;base64,${bytes.toString("base64")}`);
+    }),
   );
 
-const bundledCss = embedAssets(cssSource).replaceAll("</style", "<\\/style");
-const bundledGame = embedAssets(gameSource).replaceAll("</script", "<\\/script");
+  const embedAssets = (source) =>
+    assetPaths.reduce(
+      (result, assetPath) => result.replaceAll(assetPath, embeddedAssets.get(assetPath)),
+      source,
+    );
 
-const bundledHtml = indexSource
-  .replace(
-    '<link rel="stylesheet" href="css/game.css">',
-    `<style>\n${bundledCss}\n</style>`,
-  )
-  .replace(
-    '<script src="js/game.js"></script>',
-    `<script>\n${bundledGame}\n</script>`,
-  );
+  const bundledCss = embedAssets(cssSource).replaceAll("</style", "<\\/style");
+  const bundledGame = embedAssets(gameSource).replaceAll("</script", "<\\/script");
+  const bundledHtml = indexSource
+    .replace(
+      '<link rel="stylesheet" href="css/game.css">',
+      `<style>\n${bundledCss}\n</style>`,
+    )
+    .replace(
+      '<script src="js/game.js"></script>',
+      `<script>\n${bundledGame}\n</script>`,
+    );
 
-if (bundledHtml === indexSource) {
-  throw new Error("Bundle generation failed: source links were not replaced.");
+  if (bundledHtml === indexSource) {
+    throw new Error("Bundle generation failed: source links were not replaced.");
+  }
+
+  return { bundledHtml, assetPaths };
 }
 
-await mkdir(dirname(outputPath), { recursive: true });
-await writeFile(outputPath, bundledHtml);
+export async function writeBundle() {
+  const { bundledHtml, assetPaths } = await buildBundleInMemory();
+  await mkdir(dirname(outputPath), { recursive: true });
+  await writeFile(outputPath, bundledHtml);
+  console.log(
+    `Built ${outputPath} with ${assetPaths.length} embedded assets (${Buffer.byteLength(bundledHtml)} bytes).`,
+  );
+}
 
-console.log(
-  `Built ${outputPath} with ${assetPaths.length} embedded assets (${Buffer.byteLength(bundledHtml)} bytes).`,
-);
+export async function checkBundle() {
+  const [{ bundledHtml, assetPaths }, releaseBytes] = await Promise.all([
+    buildBundleInMemory(),
+    readFile(outputPath),
+  ]);
+  const expectedBytes = Buffer.from(bundledHtml);
+  if (!releaseBytes.equals(expectedBytes)) {
+    throw new Error(
+      `Release bundle is stale: expected ${expectedBytes.length} bytes but found ${releaseBytes.length}. Run npm run build.`,
+    );
+  }
+  console.log(
+    `Verified ${outputPath} byte-for-byte with ${assetPaths.length} embedded assets (${releaseBytes.length} bytes).`,
+  );
+}
+
+const isDirectRun = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isDirectRun) {
+  const args = process.argv.slice(2);
+  const unknownArgs = args.filter((arg) => arg !== "--check");
+  if (unknownArgs.length) {
+    throw new Error(`Unknown argument${unknownArgs.length === 1 ? "" : "s"}: ${unknownArgs.join(", ")}`);
+  }
+  if (args.includes("--check")) await checkBundle();
+  else await writeBundle();
+}

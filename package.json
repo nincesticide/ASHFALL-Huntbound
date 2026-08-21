@@ -1,0 +1,17 @@
+{
+  "name": "ashfall-huntbound",
+  "version": "0.14.0",
+  "private": true,
+  "type": "module",
+  "description": "Dependency-free build and invariant checks for ASHFALL / Huntbound.",
+  "scripts": {
+    "build": "node scripts/build-bundle.mjs",
+    "build:check": "node scripts/build-bundle.mjs --check",
+    "test:source": "node --check js/game.js && node --test tests/source-invariants.test.mjs",
+    "test:release": "node --test tests/release-bundle.test.mjs",
+    "test": "npm run test:source && npm run test:release"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
