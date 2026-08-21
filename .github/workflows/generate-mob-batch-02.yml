@@ -1,0 +1,69 @@
+name: Generate mob sprite batch 02
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - art/mob-sprites-v1
+    paths:
+      - tools/generate-mob-batch-02.js
+      - assets/monsters/batches/batch-02.plan.json
+      - .github/workflows/generate-mob-batch-02.yml
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out isolated art branch
+        uses: actions/checkout@v4
+        with:
+          ref: art/mob-sprites-v1
+          fetch-depth: 0
+
+      - name: Generate Ashfall Hollow mob atlases
+        run: node tools/generate-mob-batch-02.js
+
+      - name: Validate generated assets
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+
+          required = [
+              'bone_archer',
+              'grave_husk',
+              'restless_dead',
+          ]
+          for sprite_id in required:
+              base = Path('assets/monsters/common') / sprite_id
+              meta = base / f'{sprite_id}.sprite.json'
+              atlas = base / f'{sprite_id}.atlas.svg'
+              assert meta.exists(), meta
+              assert atlas.exists(), atlas
+              data = json.loads(meta.read_text())
+              assert data['frameWidth'] == 64
+              assert data['frameHeight'] == 64
+              assert data['columns'] == 6
+              for name in ['idle','walk','attack','special','hit','death']:
+                  assert data['animations'][name]['frames'] == 6
+              ET.parse(atlas)
+          json.loads(Path('assets/monsters/manifest.v1.json').read_text())
+          json.loads(Path('assets/monsters/batches/batch-02.manifest.json').read_text())
+          print('Validated Batch 02 monster atlases and manifests.')
+          PY
+
+      - name: Commit generated art outputs
+        run: |
+          git config user.name "ashfall-art-bot"
+          git config user.email "ashfall-art-bot@users.noreply.github.com"
+          git add assets/monsters
+          if git diff --cached --quiet; then
+            echo "Batch 02 generated outputs are already current."
+          else
+            git commit -m "Generate Ashfall Hollow mob sprite Batch 02 [skip ci]"
+            git push origin HEAD:art/mob-sprites-v1
+          fi
