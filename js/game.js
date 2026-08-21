@@ -575,11 +575,19 @@ function v7ActionSpriteKey(cid,type){
   if(cid==='warden')return type==='shieldslam'?'shieldslam':type==='fortress'?'fortress':'attack';
   return 'attack'
 }
+function drawClassDefeatSpriteV141(p,st,row,imgs,now=performance.now()){
+  const px=st.x*TILE,py=st.y*TILE,dead=!!p.dead,stamp=dead?(p.deadAt||Date.now()-700):(p.downedAt||Date.now()-500),age=Math.max(0,Date.now()-stamp),t=clamp(age/(dead?520:360),0,1),ease=1-Math.pow(1-t,3),dir=(st.facing==='west'||st.facing==='north')?-1:1,angle=dir*(dead?Math.PI*.53:Math.PI*.46)*ease,im=imgs.idle,frame=dead?0:Math.min(3,Math.floor(now/260)%4),classColor=CLASS_FX_COLOR[p.classId]||'#d67b69';
+  ctx.save();ctx.imageSmoothingEnabled=false;
+  ctx.fillStyle=dead?'rgba(0,0,0,.48)':'rgba(0,0,0,.4)';ctx.beginPath();ctx.ellipse(px+16,py+28,dead?19:17,dead?5:4,0,0,Math.PI*2);ctx.fill();
+  ctx.translate(px+16,py+27);ctx.rotate(angle);ctx.globalAlpha=dead?.62:1;ctx.filter=dead?'grayscale(.82) brightness(.62) sepia(.18)':'saturate(.78) brightness(.82)';ctx.drawImage(im,frame*48,row*48,48,48,-24,-44,48,48);ctx.filter='none';ctx.globalAlpha=1;ctx.restore();
+  ctx.save();ctx.textAlign='center';if(dead){const ash=.18+.09*Math.sin(now/430);ctx.strokeStyle=`rgba(178,139,118,${ash})`;ctx.beginPath();ctx.ellipse(px+16,py+28,20,6,0,0,Math.PI*2);ctx.stroke();ctx.fillStyle='rgba(220,184,145,.58)';ctx.font='bold 8px monospace';ctx.fillText('FALLEN',px+16,py+38)}else{const pulse=.55+.3*Math.sin(now/150);ctx.strokeStyle=`rgba(239,103,98,${pulse})`;ctx.lineWidth=2;ctx.setLineDash([4,3]);ctx.beginPath();ctx.ellipse(px+16,py+28,19,6,0,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle=classColor;ctx.fillRect(px+12,py+34,8,2);ctx.fillStyle='#ffd2c5';ctx.font='bold 8px monospace';ctx.fillText('REVIVE',px+16,py+43)}ctx.restore();return true
+}
 function drawClassSpriteV7(p,inCamp=false){
   if(!V7_CLASS_IMAGES[p.classId]||!v7SpriteReady(p.classId))return false;
   const now=performance.now(),st=v7ClassState(p,inCamp,now),act=inCamp?null:v7VisualAction(p),row={south:0,west:1,east:2,north:3}[(act?.facing)||st.facing]??0,imgs=V7_CLASS_IMAGES[p.classId];
   const px=st.x*TILE,py=st.y*TILE,sx=Math.round(px+TILE/2-24),sy=Math.round(py+TILE-47+st.bob);
-  ctx.save();ctx.imageSmoothingEnabled=false;if(p.dead)ctx.globalAlpha=.32;
+  if(!inCamp&&(p.downed||p.dead))return drawClassDefeatSpriteV141(p,st,row,imgs,now);
+  ctx.save();ctx.imageSmoothingEnabled=false;
   ctx.fillStyle='rgba(0,0,0,.34)';ctx.beginPath();ctx.ellipse(px+16,py+27,st.moving?12:13,st.moving?3.4:4,0,0,Math.PI*2);ctx.fill();
   if(st.moving){
     ctx.fillStyle='rgba(190,170,130,.14)';const back=st.facing==='east'?6:st.facing==='west'?-6:0;ctx.fillRect(Math.round(px+15-back),Math.round(py+27),2,1)
@@ -596,7 +604,6 @@ function drawClassSpriteV7(p,inCamp=false){
   if(!inCamp&&p.submitted&&p.pending?.type==='move'){
     const nx=p.x+p.pending.dx,ny=p.y+p.pending.dy;ctx.strokeStyle='rgba(126,216,238,.55)';ctx.setLineDash([3,3]);ctx.strokeRect(nx*TILE+5,ny*TILE+5,TILE-10,TILE-10);ctx.setLineDash([])
   }
-  if(!inCamp&&p.downed){ctx.strokeStyle='#ef6f6f';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(px+5,py+5);ctx.lineTo(px+27,py+27);ctx.moveTo(px+27,py+5);ctx.lineTo(px+5,py+27);ctx.stroke();ctx.lineWidth=1}
   if(inCamp){ctx.font='8px monospace';ctx.textAlign='center';ctx.fillStyle='#eef4fb';ctx.fillText(`${p.name}${p.title&&p.title!=='Hunter'?`, ${p.title}`:''}`,px+16,py+38);ctx.textAlign='left'}
   ctx.restore();return true
 }
@@ -614,6 +621,19 @@ const peerId=sessionStorage.getItem(SESSION_PEER)||uid();sessionStorage.setItem(
 
 let soundOn=true,audio=null,bc=null,isHost=false,roomCode=null,selectedMission='frontier';
 let profile=null,room=null,snapshot=null,lastSummary=null,moveSaveTimer=null,selectedTargetId=null,selectedPartId=null;
+let remoteTransportV141={room:null,cursor:0,controller:null,ready:Promise.resolve(),connected:false};
+const transportSeenV141=new Set(),transportSeenOrderV141=[];
+
+function rememberTransportEventV141(id){if(!id||transportSeenV141.has(id))return false;transportSeenV141.add(id);transportSeenOrderV141.push(id);while(transportSeenOrderV141.length>900)transportSeenV141.delete(transportSeenOrderV141.shift());return true}
+function receiveTransportEventV141(event){if(!event)return;const id=event._transportId;if(id&&!rememberTransportEventV141(id))return;onNetwork(event)}
+function setRemoteTransportStatusV141(connected){remoteTransportV141.connected=connected;document.body.classList.toggle('remote-mp-v141',connected);const badge=$('roomBadge');if(badge)badge.title=connected?'Remote multiplayer relay connected':'Local tab multiplayer fallback active'}
+function stopRemoteTransportV141(){remoteTransportV141.controller?.abort();remoteTransportV141={room:null,cursor:0,controller:null,ready:Promise.resolve(),connected:false};setRemoteTransportStatusV141(false)}
+async function remotePostV141(event,code=remoteTransportV141.room){if(!code)return;try{await remoteTransportV141.ready;await fetch('/api/multiplayer',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({room:code,event}),credentials:'same-origin',keepalive:true});setRemoteTransportStatusV141(true)}catch(err){if(err?.name!=='AbortError')setRemoteTransportStatusV141(false)}}
+function startRemoteTransportV141(code,reset=false){
+  stopRemoteTransportV141();const controller=new AbortController(),state={room:code,cursor:0,controller,ready:null,connected:false};remoteTransportV141=state;
+  state.ready=(async()=>{try{if(reset)await fetch(`/api/multiplayer?room=${encodeURIComponent(code)}`,{method:'DELETE',credentials:'same-origin',signal:controller.signal});const res=await fetch(`/api/multiplayer?room=${encodeURIComponent(code)}&since=0`,{credentials:'same-origin',cache:'no-store',signal:controller.signal});if(!res.ok)throw new Error(`relay ${res.status}`);const data=await res.json();state.cursor=data.cursor||0;(data.events||[]).forEach(row=>receiveTransportEventV141(row.event));setRemoteTransportStatusV141(true)}catch(err){if(err?.name!=='AbortError')setRemoteTransportStatusV141(false)}})();
+  state.ready.then(async()=>{while(remoteTransportV141===state&&state.room===code&&!controller.signal.aborted){try{const res=await fetch(`/api/multiplayer?room=${encodeURIComponent(code)}&since=${state.cursor}`,{credentials:'same-origin',cache:'no-store',signal:controller.signal});if(!res.ok)throw new Error(`relay ${res.status}`);const data=await res.json();for(const row of data.events||[]){state.cursor=Math.max(state.cursor,row.id||0);receiveTransportEventV141(row.event)}setRemoteTransportStatusV141(true)}catch(err){if(err?.name==='AbortError')break;setRemoteTransportStatusV141(false)}await new Promise(resolve=>setTimeout(resolve,state.connected?180:650))}})
+}
 
 let combatMeterMode='damage',combatFloaters=[],combatFeed=[],worldFx=[],screenShakeUntil=0,screenShakePower=0;
 const CLASS_FX_COLOR={warden:'#8fc5ff',berserker:'#ff704f',ranger:'#79d99a',arcanist:'#b279ff',templar:'#f2cf72',shadow:'#b784f4'};
@@ -1110,7 +1130,7 @@ function itemEffectTagsHTMLV132(i){
   return tags.length?`<div class="item-effect-row-v132">${tags.join('')}</div>`:''
 }
 
-const CAMP_OBJECTS=[{id:'board',name:'Hunt Board',x:15,y:3,type:'board'},{id:'smith',name:'Huntsmith Orik',x:5,y:7,type:'smith'},{id:'crafter',name:'Relic Crafter Nessa',x:25,y:6,type:'crafter'},{id:'healer',name:'Healer Amara',x:25,y:14,type:'healer'},{id:'bonfire',name:'Ember Bonfire',x:15,y:10,type:'bonfire'},{id:'dummy1',name:'Training Dummy',x:5,y:15,type:'dummy'},{id:'dummy2',name:'Armored Dummy',x:7,y:15,type:'dummy'},{id:'stash',name:'Hunter Stash',x:10,y:3,type:'stash'},{id:'war',name:'War Table',x:20,y:3,type:'war'},{id:'trophy',name:'Trophy Wall',x:20,y:7,type:'trophy'},{id:'wager',name:'Cinder’s Wager',x:18,y:15,type:'wager'},{id:'worldgate',name:'North Gate — Emberwood Lowlands',x:14,y:2,type:'worldgate'}];
+const CAMP_OBJECTS=[{id:'board',name:'Hunt Board',x:12,y:6,type:'board'},{id:'smith',name:'Huntsmith Orik',x:5,y:7,type:'smith'},{id:'crafter',name:'Relic Crafter Nessa',x:25,y:6,type:'crafter'},{id:'healer',name:'Healer Amara',x:25,y:14,type:'healer'},{id:'bonfire',name:'Ember Bonfire',x:15,y:10,type:'bonfire'},{id:'dummy1',name:'Training Dummy',x:5,y:15,type:'dummy'},{id:'dummy2',name:'Armored Dummy',x:7,y:15,type:'dummy'},{id:'stash',name:'Hunter Stash',x:10,y:3,type:'stash'},{id:'war',name:'War Table',x:20,y:3,type:'war'},{id:'trophy',name:'Trophy Wall',x:20,y:7,type:'trophy'},{id:'wager',name:'Cinder’s Wager',x:18,y:15,type:'wager'},{id:'worldgate',name:'North Gate — Emberwood Lowlands',x:15,y:2,type:'worldgate'}];
 
 /* ===== v0.14.0 OPEN WORLD FOUNDATION ===== */
 const V14_WORLD_REGIONS={
@@ -1136,7 +1156,7 @@ function worldMapV14(seed=17){
 function buildWorldStateV14(region='emberwood'){
   const encounters=[
     {id:'wolfpack1',x:8,y:5,name:'Road Wolf Pack',kind:'wolf',count:2,elite:false,done:false,respawnAt:0},
-    {id:'boars1',x:12,y:14,name:'Emberback Sounder',kind:'boar',count:3,elite:false,done:false,respawnAt:0},
+    {id:'boars1',x:12,y:14,name:'Emberback Sounder',kind:'emberboar',count:3,elite:false,done:false,respawnAt:0},
     {id:'wolfpack2',x:21,y:5,name:'Briar Wolf Pack',kind:'wolf',count:3,elite:false,done:false,respawnAt:0},
     {id:'elite1',x:25,y:13,name:'Redjaw Scout',kind:'wolf',count:2,elite:true,done:false,respawnAt:0}
   ];
@@ -1149,27 +1169,52 @@ function refreshWorldStateV14(w=worldStateV14()){
 }
 function worldEncounterAvailableV14(e){return !!e&&(!e.done||((e.respawnAt||0)>0&&Date.now()>=(e.respawnAt||0)))}
 function worldStateV14(){return (room||snapshot)?.worldV14||null}
-function enterWorldV14(){
+function enterWorldV14(requestPid=peerId){
   if(!room&&!snapshot)return toast('Create or join a room first');
   if(!isHost)return send({type:'enterWorldV14',peerId});
-  room.worldV14=room.worldV14||buildWorldStateV14('emberwood');const wp=ensureWorldProfileV14(profile);wp.enteredLowlands=true;persistProfile();Object.values(room.players).forEach((p,i)=>{p.worldX=2+(i%2);p.worldY=9+Math.floor(i/2);p.facing='east'});broadcastSnapshot();renderAll();flowBannerV13('EMBERWOOD LOWLANDS','Surface threats are easier than Deep Hunts. Farm, gather, complete contracts, or enter a Delve.','route','REGION DISCOVERED');notifyV11('quest','EMBERWOOD LOWLANDS','Surface exploration unlocked. Farm, quest, discover Delves, or return to Emberwatch.',{life:6500})
+  const requester=room.players?.[requestPid],gate=CAMP_OBJECTS.find(o=>o.type==='worldgate');
+  if(!requester||room.run||room.worldV14)return;
+  if(Math.abs((requester.campX??14)-gate.x)+Math.abs((requester.campY??15)-gate.y)>1)return send({type:'worldNoticeV141',peerId:requestPid,kind:'warn',title:'NORTH GATE',detail:'Walk closer to the gate before entering Emberwood.'});
+  room.worldV14=buildWorldStateV14('emberwood');const wp=ensureWorldProfileV14(profile);wp.enteredLowlands=true;persistProfile();Object.values(room.players).forEach((p,i)=>{p.worldX=5+(i%2);p.worldY=9+Math.floor(i/2);p.facing='east'});broadcastSnapshot();renderAll();flowBannerV13('EMBERWOOD LOWLANDS','Surface threats are easier than Deep Hunts. Farm, gather, complete contracts, or enter a Delve.','route','REGION DISCOVERED');notifyV11('quest','EMBERWOOD LOWLANDS','Surface exploration unlocked. Farm, quest, discover Delves, or return to Emberwatch.',{life:6500})
 }
-function leaveWorldV14(){if(!isHost)return send({type:'leaveWorldV14',peerId});if(room){room.worldV14=null;broadcastSnapshot();renderAll();notifyV11('info','EMBERWATCH','Returned to camp.')}}
+function leaveWorldV14(requestPid=peerId){if(!isHost)return send({type:'leaveWorldV14',peerId});if(!room?.worldV14||room.run)return;const p=room.players?.[requestPid];if(!p||Math.abs((p.worldX??5)-2)+Math.abs((p.worldY??9)-9)>1)return send({type:'worldNoticeV141',peerId:requestPid,kind:'warn',title:'EMBERWATCH GATE',detail:'Walk closer to the gate before returning to camp.'});room.worldV14=null;broadcastSnapshot();renderAll();notifyV11('info','EMBERWATCH','Returned to camp.')}
 function worldOccupiedV14(x,y,pid){return Object.values((room||snapshot)?.players||{}).some(p=>p.peerId!==pid&&p.worldX===x&&p.worldY===y)}
-function hostWorldMoveV14(pid,dx,dy){if(!isHost||room?.run||!room?.worldV14)return;refreshWorldStateV14(room.worldV14);const p=room.players?.[pid];if(!p)return;const facing=rangerFacingFromDelta(dx,dy,p.facing||'south'),nx=(p.worldX??2)+dx,ny=(p.worldY??9)+dy;if(!isWalk(room.worldV14.map,nx,ny)||worldOccupiedV14(nx,ny,pid)){p.facing=facing;broadcastSnapshot();return}p.facing=facing;p.worldX=nx;p.worldY=ny;broadcastSnapshot()}
+function hostWorldMoveV14(pid,dx,dy){if(!isHost||room?.run||!room?.worldV14||Math.abs(dx)+Math.abs(dy)!==1)return;refreshWorldStateV14(room.worldV14);const p=room.players?.[pid];if(!p)return;const facing=rangerFacingFromDelta(dx,dy,p.facing||'south'),nx=(p.worldX??5)+dx,ny=(p.worldY??9)+dy;if(!isWalk(room.worldV14.map,nx,ny)||worldOccupiedV14(nx,ny,pid)){p.facing=facing;broadcastSnapshot();return}p.facing=facing;p.worldX=nx;p.worldY=ny;broadcastSnapshot()}
 function moveWorldV14(dx,dy){if((room||snapshot)?.run||!worldStateV14())return;if(isHost)hostWorldMoveV14(peerId,dx,dy);else send({type:'worldMoveV14',peerId,dx,dy})}
-function nearestWorldObjectV14(){const w=worldStateV14(),p=(room||snapshot)?.players?.[peerId];if(!w||!p)return null;const arr=[...w.encounters.filter(worldEncounterAvailableV14).map(x=>({...x,objType:'encounter'})),...w.resources.filter(x=>!x.done).map(x=>({...x,objType:'resource'})),...w.entrances.map(x=>({...x,objType:'entrance'})),{id:'campgate',x:2,y:9,name:'Emberwatch Gate',objType:'gate'}];return arr.map(o=>({...o,d:Math.abs(o.x-(p.worldX??2))+Math.abs(o.y-(p.worldY??9))})).filter(o=>o.d<=1).sort((a,b)=>a.d-b.d)[0]||null}
+function worldObjectsV141(w=worldStateV14()){if(!w)return[];return[...(w.encounters||[]).filter(worldEncounterAvailableV14).map(x=>({...x,objType:'encounter'})),...(w.resources||[]).filter(x=>!x.done).map(x=>({...x,objType:'resource'})),...(w.entrances||[]).map(x=>({...x,objType:'entrance'})),{id:'campgate',x:2,y:9,name:'Emberwatch Gate',objType:'gate'}]}
+function worldObjectByIdV141(id,w=worldStateV14()){return worldObjectsV141(w).find(o=>o.id===id)||null}
+function nearestWorldObjectV14(){const w=worldStateV14(),p=(room||snapshot)?.players?.[peerId];if(!w||!p)return null;return worldObjectsV141(w).map(o=>({...o,d:Math.abs(o.x-(p.worldX??5))+Math.abs(o.y-(p.worldY??9))})).filter(o=>o.d<=1).sort((a,b)=>a.d-b.d)[0]||null}
 function launchWorldSkirmishV14(enc){
   if(!isHost||!room||!enc)return;const mission=MISSIONS.frontier,modifier=structuredCloneSafe(MODIFIERS[0]);room.run={missionId:'frontier',isWorldSkirmish:true,worldEncounter:structuredCloneSafe(enc),difficulty:'normal',modifier,dailyBoost:1,depth:1,round:1,totalRounds:0,phase:'player',map:[],enemies:[],players:{},votes:{},log:[],cleared:false,startedAt:Date.now(),currentPath:null,pathChoices:null,stageEvent:null,deathCaches:[],huntHeat:1,campaignVersion:'v0.14.0'};Object.values(room.players).forEach(p=>room.run.players[p.peerId]=createRunPlayer(p));generateStage(room.run,mission);room.run.zoneStageName=enc.name;room.run.log.push(`SURFACE SKIRMISH — ${enc.name}. Surface fights are deliberately lighter than Deep Hunts. Defeat the local threat and return to the overworld.`);broadcastSnapshot();renderAll()
 }
-function gatherWorldResourceV14(obj){if(!profile||!room?.worldV14)return;const real=room.worldV14.resources.find(x=>x.id===obj.id);if(!real||real.done)return;real.done=true;ensureWorldProfileV14(profile);profile.worldV14.contracts.resources++;if(real.kind==='herb'){profile.materials.common+=2;profile.gold+=20;notifyV11('loot','EMBERLEAF GATHERED','+2 common materials • +20 gold')}else if(real.kind==='ore'){profile.materials.common+=4;profile.materials.rare+=1;notifyV11('loot','FRONTIER ORE','+4 common • +1 rare material')}else{profile.gold+=90;profile.materials.common+=2;notifyV11('loot','HUNTER CACHE','+90 gold • +2 common materials')}checkWorldContractsV14();persistProfile();broadcastSnapshot();renderAll()}
-function interactWorldV14(o=nearestWorldObjectV14()){if(!o)return toast('Nothing nearby');if(o.objType==='gate')return leaveWorldV14();if(o.objType==='resource')return gatherWorldResourceV14(o);if(o.objType==='entrance'){const d=delveByIdV132(o.delveId);if(!d)return toast('Dungeon data missing');if(!profile.discoveredDelvesV132?.includes(d.id)){profile.discoveredDelvesV132=profile.discoveredDelvesV132||[];profile.discoveredDelvesV132.push(d.id);persistProfile();notifyV11('quest','DELVE DISCOVERED',`${d.name} added to your Hunt Board.`)}room.delveId=d.id;room.missionId=d.source;if(Object.keys(room.players).length===1){room.players[peerId].ready=true;launchExpedition()}else{renderLobby();show('lobbyOverlay');toast(`${d.name} selected — party must ready up.`)}return}if(o.objType==='encounter'){launchWorldSkirmishV14(o)}}
+function worldResourceRewardV141(obj){if(obj.kind==='herb')return{kind:'herb',gold:20,common:2,rare:0,title:'EMBERLEAF GATHERED',detail:'+2 common materials • +20 gold'};if(obj.kind==='ore')return{kind:'ore',gold:0,common:4,rare:1,title:'FRONTIER ORE',detail:'+4 common • +1 rare material'};return{kind:'cache',gold:90,common:2,rare:0,title:'HUNTER CACHE',detail:'+90 gold • +2 common materials'}}
+function applyWorldResourceRewardV141(reward){if(!profile||!reward)return;ensureWorldProfileV14(profile);profile.worldV14.contracts.resources++;profile.gold+=(reward.gold||0);profile.materials.common+=(reward.common||0);profile.materials.rare+=(reward.rare||0);checkWorldContractsV14();persistProfile();notifyV11('loot',reward.title,reward.detail);renderAll()}
+function applyWorldDelveDiscoveryV141(delveId){if(!profile)return;const d=delveByIdV132(delveId);if(!d)return;profile.discoveredDelvesV132=profile.discoveredDelvesV132||[];if(profile.discoveredDelvesV132.includes(d.id))return;profile.discoveredDelvesV132.push(d.id);persistProfile();notifyV11('quest','DELVE DISCOVERED',`${d.name} added to your Hunt Board.`)}
+function deliverWorldRewardV141(pid,reward){if(pid===peerId)applyWorldResourceRewardV141(reward);else send({type:'worldRewardV141',peerId:pid,reward})}
+function hostWorldInteractV141(pid,objectId){
+  if(!isHost||!room?.worldV14||room.run)return;refreshWorldStateV14(room.worldV14);const p=room.players?.[pid],o=worldObjectByIdV141(objectId,room.worldV14);if(!p||!o)return;
+  if(Math.abs(o.x-(p.worldX??5))+Math.abs(o.y-(p.worldY??9))>1)return send({type:'worldNoticeV141',peerId:pid,kind:'warn',title:'OUT OF RANGE',detail:`Walk closer to ${o.name}.`});
+  if(o.objType==='gate')return leaveWorldV14(pid);
+  if(o.objType==='resource'){const real=room.worldV14.resources.find(x=>x.id===o.id);if(!real||real.done)return;real.done=true;deliverWorldRewardV141(pid,worldResourceRewardV141(real));broadcastSnapshot();return}
+  if(o.objType==='encounter')return launchWorldSkirmishV14(o);
+  if(o.objType==='entrance'){
+    const d=delveByIdV132(o.delveId);if(!d)return send({type:'worldNoticeV141',peerId:pid,kind:'warn',title:'SEALED ENTRANCE',detail:'Dungeon data is unavailable.'});
+    if(pid===peerId)applyWorldDelveDiscoveryV141(d.id);else send({type:'worldDelveDiscoveredV141',peerId:pid,delveId:d.id});
+    room.delveId=d.id;room.missionId=d.source;room.worldSelectionV141={kind:'delve',delveId:d.id,selectedBy:pid};Object.values(room.players).forEach(q=>q.ready=false);
+    if(Object.values(room.players).filter(q=>q.connected!==false).length===1){room.players[pid].ready=true;launchExpedition()}else{broadcastSnapshot();renderLobby();show('lobbyOverlay');toast(`${d.name} selected — party must ready up.`)}
+  }
+}
+function interactWorldV14(o=nearestWorldObjectV14()){if(!o)return toast('Nothing nearby');if(isHost)return hostWorldInteractV141(peerId,o.id);send({type:'worldInteractV141',peerId,objectId:o.id})}
 const V14_WORLD_CONTRACTS=[{id:'wolves',name:'Thin the Packs',need:6,rewardGold:180,rewardCommon:4,desc:'Defeat 6 surface wolves.'},{id:'resources',name:'Frontier Provisioning',need:3,rewardGold:120,rewardCommon:6,desc:'Gather 3 overworld resources.'},{id:'elites',name:'Prove the Road',need:1,rewardGold:260,rewardRare:2,desc:'Defeat 1 surface elite.'}];
 function checkWorldContractsV14(){if(!profile)return;const w=ensureWorldProfileV14(profile);V14_WORLD_CONTRACTS.forEach(c=>{if(w.contractsClaimed[c.id]||(w.contracts[c.id]||0)<c.need)return;w.contractsClaimed[c.id]=true;profile.gold+=c.rewardGold||0;profile.materials.common+=c.rewardCommon||0;profile.materials.rare+=c.rewardRare||0;notifyV11('quest','CONTRACT COMPLETE',`${c.name} • +${c.rewardGold||0} gold${c.rewardCommon?` • +${c.rewardCommon} common`:''}${c.rewardRare?` • +${c.rewardRare} rare`:''}`,{life:6500})})}
 function worldContractsHTMLV14(){if(!profile)return'';const w=ensureWorldProfileV14(profile);return V14_WORLD_CONTRACTS.map(c=>`<div class="legacycard"><b>${w.contractsClaimed[c.id]?'✓ ':''}${c.name}</b><div class="tiny">${c.desc}</div><div>${Math.min(c.need,w.contracts[c.id]||0)}/${c.need}</div></div>`).join('')}
 function drawWorldV14(){
   const w=worldStateV14();if(!w)return;refreshWorldStateV14(w);
   for(let y=0;y<H;y++)for(let x=0;x<W;x++)drawTile(w.map[y][x],x,y);
+  drawAmbientMapFx({missionId:'frontier',map:w.map});
+  ctx.save();ctx.strokeStyle='rgba(30,24,16,.22)';ctx.lineWidth=1;for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++)if(w.map[y][x]==='path'){
+    const px=x*TILE,py=y*TILE;if(w.map[y-1][x]!=='path'){ctx.beginPath();ctx.moveTo(px,py+.5);ctx.lineTo(px+TILE,py+.5);ctx.stroke()}if(w.map[y+1][x]!=='path'){ctx.beginPath();ctx.moveTo(px,py+TILE-.5);ctx.lineTo(px+TILE,py+TILE-.5);ctx.stroke()}if(w.map[y][x-1]!=='path'){ctx.beginPath();ctx.moveTo(px+.5,py);ctx.lineTo(px+.5,py+TILE);ctx.stroke()}if(w.map[y][x+1]!=='path'){ctx.beginPath();ctx.moveTo(px+TILE-.5,py);ctx.lineTo(px+TILE-.5,py+TILE);ctx.stroke()}
+  }ctx.restore();
   drawZoneAtmosphereV09({missionId:'frontier',depth:1});
   ctx.save();ctx.fillStyle='rgba(24,52,30,.075)';ctx.fillRect(0,0,canvas.width,canvas.height);
   // Emberwatch return gate.
@@ -1177,7 +1222,7 @@ function drawWorldV14(){
   w.resources.filter(x=>!x.done).forEach(o=>{const x=o.x*TILE+16,y=o.y*TILE+16;if(o.kind==='ore'){ctx.fillStyle='#6f8d98';ctx.beginPath();ctx.moveTo(x-8,y+7);ctx.lineTo(x-2,y-8);ctx.lineTo(x+4,y-1);ctx.lineTo(x+9,y+8);ctx.fill();ctx.fillStyle='#b5dae4';ctx.fillRect(x-2,y-5,2,7)}else if(o.kind==='cache'){ctx.fillStyle='#7c5734';ctx.fillRect(x-9,y-6,18,12);ctx.fillStyle='#bf9658';ctx.fillRect(x-9,y-2,18,3);ctx.fillRect(x-1,y-4,3,7)}else{ctx.fillStyle='#4e7e49';for(let i=0;i<5;i++){ctx.beginPath();ctx.ellipse(x+(i-2)*3,y+(i%2)*3,4,8,(i-2)*.25,0,Math.PI*2);ctx.fill()}ctx.fillStyle='#c46c46';ctx.fillRect(x-1,y-2,3,3)}ctx.font='bold 7px monospace';ctx.fillStyle='#e8eadb';ctx.fillText(o.kind==='cache'?'HUNTER CACHE':o.kind==='ore'?'FRONTIER ORE':'EMBERLEAF',x,y-12)});
   w.entrances.forEach(o=>{const x=o.x*TILE+16,y=o.y*TILE+16;ctx.fillStyle='#161219';ctx.beginPath();ctx.ellipse(x,y+3,14,11,0,Math.PI,Math.PI*2);ctx.fill();ctx.strokeStyle='#836c58';ctx.lineWidth=3;ctx.beginPath();ctx.arc(x,y+3,14,Math.PI,Math.PI*2);ctx.stroke();ctx.lineWidth=1;ctx.fillStyle='rgba(164,100,55,.28)';ctx.fillRect(x-8,y+2,16,10);ctx.font='bold 8px monospace';ctx.fillStyle='#e8c476';ctx.fillText('EMBERROOT CELLAR',x,y-14)});
   w.encounters.filter(worldEncounterAvailableV14).forEach(o=>{const pseudo={id:`surface_${o.id}`,kind:o.kind,x:o.x,y:o.y,elite:o.elite,hp:1,maxHp:1,status:{poison:0,burn:0,bleed:0},trait:o.elite?'SURFACE ELITE':null};drawRegularMonsterPolished(pseudo);ctx.font='bold 7px monospace';ctx.fillStyle=o.elite?'#ffbf86':'#e5e0d6';ctx.fillText(o.name,o.x*TILE+16,o.y*TILE-4)});
-  Object.values((room||snapshot)?.players||{}).forEach(p=>{const faux={...p,campX:p.worldX??2,campY:p.worldY??9};drawCampPlayer(faux)});
+  Object.values((room||snapshot)?.players||{}).forEach(p=>{const faux={...p,campX:p.worldX??5,campY:p.worldY??9};drawCampPlayer(faux)});
   const near=nearestWorldObjectV14();if(near){const x=near.x*TILE+16,y=near.y*TILE+16,r=15+Math.sin(performance.now()/180)*2;ctx.strokeStyle='rgba(116,211,160,.8)';ctx.lineWidth=2;ctx.setLineDash([4,3]);ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.font='bold 8px monospace';ctx.fillStyle='#d5f4dd';ctx.fillText('E',x,y+3)}
   ctx.textAlign='left';ctx.restore()
 }
@@ -1411,7 +1456,7 @@ function applyDeepNodeEntry(run,node){
   run.zoneStageName=node.name;
   if(node.boon){Object.values(run.players).filter(p=>!p.dead).forEach(p=>{p.boons=p.boons||[];if(!p.boons.includes(node.boon))p.boons.push(node.boon)});run.log.push(`✦ Expedition boon secured: ${boonById(node.boon)?.name||node.boon}.`)}
   if(node.type==='campsite' || node.type==='rescue'){
-    const healFrac=node.heal||0.12;Object.values(run.players).forEach(p=>{if(p.dead){p.dead=false;p.downed=false;p.hp=Math.max(1,Math.round(p.maxHp*.35));run.log.push(`${p.name} is dragged back into the hunt at ${p.hp} HP.`)}const amt=Math.round(p.maxHp*healFrac);p.hp=Math.min(p.maxHp,p.hp+amt);if(node.potions)p.potions=Math.min(5,(p.potions||0)+node.potions)});
+    const healFrac=node.heal||0.12;Object.values(run.players).filter(p=>p.connected!==false).forEach(p=>{if(p.dead){p.dead=false;p.downed=false;p.deadAt=null;p.downedAt=null;p.hp=Math.max(1,Math.round(p.maxHp*.35));run.log.push(`${p.name} is dragged back into the hunt at ${p.hp} HP.`)}const amt=Math.round(p.maxHp*healFrac);p.hp=Math.min(p.maxHp,p.hp+amt);if(node.potions)p.potions=Math.min(5,(p.potions||0)+node.potions)});
     if(node.type==='campsite'&&chance(.28)){run.currentPath.enemy=(run.currentPath.enemy||1)*1.08;run.currentPath.elite=(run.currentPath.elite||0)+.03;run.log.push('⚠ Campsite ambush — the rest was interrupted by prowling monsters.')}else run.log.push(`${node.name}: the party regains momentum before moving on.`);
   }
   if(node.cacheGold||node.cacheCommon){Object.values(run.players).forEach(p=>{p.runLoot.gold+=(node.cacheGold||0);p.runLoot.common+=(node.cacheCommon||0)});run.log.push(`${node.name}: supplies recovered for the whole party.`)}
@@ -1555,8 +1600,8 @@ function hostCancelActionV131(pid){const run=room?.run,p=run?.players?.[pid];if(
 function cycleTargetV131(dir=1){const run=(room||snapshot)?.run,me=run?.players?.[peerId];if(!run||!me)return;const a=run.enemies.filter(e=>e.hp>0).sort((x,y)=>distanceToEnemy(me,x)-distanceToEnemy(me,y));if(!a.length)return;let idx=a.findIndex(e=>e.id===selectedTargetId);idx=(idx+dir+a.length)%a.length;selectedTargetId=a[idx].id;selectedPartId=a[idx].parts?.find(p=>partTargetable(a[idx],p))?.id||null;toast(`Target: ${a[idx].name}`);renderAll()}
 function cyclePartV131(dir=1){const run=(room||snapshot)?.run,e=run?.enemies?.find(x=>x.id===selectedTargetId&&x.hp>0);if(!e?.parts?.length)return toast('Target has no breakable anatomy');const a=e.parts.filter(p=>partTargetable(e,p));if(!a.length)return;let idx=a.findIndex(p=>p.id===selectedPartId);idx=(idx+dir+a.length)%a.length;selectedPartId=a[idx].id;toast(`Aim: ${a[idx].name}`);renderAll()}
 function summaryItemActionV131(id,action){const i=profile.inventory.find(x=>x.id===id);if(!i)return toast('Item is no longer in inventory');if(action==='equip')equipRecovered(id);if(action==='favorite')toggleFavoriteV131(id);if(action==='lock')toggleLockV131(id);if(action==='salvage')salvageItem(id);showSummary(lastSummary)}
-function repeatHuntV131(){if(!lastSummary)return;hide('summaryOverlay');if(isHost&&room){room.missionId=lastSummary.missionId;room.difficulty=lastSummary.difficulty||'normal';Object.values(room.players).forEach(p=>p.ready=false);renderLobby();show('lobbyOverlay');if(Object.keys(room.players).length===1){room.players[peerId].ready=true;launchExpedition()}else toast('Same hunt selected — ready up for the rematch')}else if(room||snapshot){show('lobbyOverlay');toast('Party leader must relaunch the hunt')}}
-function continueCampaignV131(){if(!profile)return;hide('summaryOverlay');const next=Object.entries(MISSIONS).find(([mid,m])=>!profile.trophies.includes(m.boss.name)&&!missionUnlockState(profile,mid).locked);if(isHost&&room&&next){room.missionId=next[0];Object.values(room.players).forEach(p=>p.ready=false);broadcastSnapshot();show('lobbyOverlay');toast(`Next hunt: ${next[1].name}`)}else{show('lobbyOverlay');toast(next?`Next objective: ${next[1].name}`:nextCampaignObjective(profile))}}
+function repeatHuntV131(){if(!lastSummary)return;hide('summaryOverlay');if(lastSummary.isWorldSkirmish){renderAll();toast('Returned to Emberwood — surface threats will respawn.');return}if(isHost&&room){room.missionId=lastSummary.missionId;room.delveId=lastSummary.isDelve?(lastSummary.delveId||null):null;room.difficulty=lastSummary.difficulty||'normal';Object.values(room.players).forEach(p=>p.ready=false);renderLobby();show('lobbyOverlay');if(Object.keys(room.players).length===1){room.players[peerId].ready=true;launchExpedition()}else toast('Same hunt selected — ready up for the rematch')}else if(room||snapshot){show('lobbyOverlay');toast('Party leader must relaunch the hunt')}}
+function continueCampaignV131(){if(!profile)return;hide('summaryOverlay');const next=Object.entries(MISSIONS).find(([mid,m])=>!profile.trophies.includes(m.boss.name)&&!missionUnlockState(profile,mid).locked);if(isHost&&room&&next){room.missionId=next[0];room.delveId=null;room.worldSelectionV141=null;Object.values(room.players).forEach(p=>p.ready=false);broadcastSnapshot();show('lobbyOverlay');toast(`Next hunt: ${next[1].name}`)}else{show('lobbyOverlay');toast(next?`Next objective: ${next[1].name}`:nextCampaignObjective(profile))}}
 
 function newProfile(name,classId){
   const starterNames={warden:'Militia Broadsword',berserker:'Woodcutter Greataxe',ranger:'Ashwood Bow',arcanist:'Apprentice Emberstaff',templar:'Temple Mace',shadow:'Twin Iron Knives'};
@@ -1698,7 +1743,7 @@ function hasRelic(p,id){return !!p?.relicPowers?.includes(id)}
 function effectiveRange(p){let r=CLASSES[p.classId].range;if(p.classId==='ranger'&&(hasRelic(p,'longwatch')||p.selectedSpec==='marksman'))r+=1;if(p.classId==='warden'&&hasRelic(p,'guardian_range'))r=Math.max(r,2);if(hasGearTraitV10(p,'longreach')&&['ranger','arcanist'].includes(p.classId))r+=1;if(p.classId==='arcanist'&&hasGearTraitV10(p,'piercing_lance'))r+=1;r+=ascentEffectsV11(p).range||0;return r}
 function relicDropChance(e,run){let rate=e?.boss?.02:e?.elite?.0015:.0001;if(run?.difficulty==='nightmare')rate*=1.75;if(run?.modifier?.id==='treasure')rate*=1.6;return Math.min(.08,rate)}
 function generateRelic(p,e){const cls=p.classId,base=pick(CLASS_RELIC_BASES[cls]),epi=pick(RELIC_EPITHETS),pow=pick(RELIC_POWERS[cls]),run=room?.run||snapshot?.run,mid=run?.missionId||'frontier',tier={frontier:4,hollow:9,gloam:14,keep:19,frost:24,rift:29,worldeater:34}[mid]||4;const ilvl=Math.max(6,Math.round(tier+p.level*.35+(e?.boss?2:e?.elite?1:0)+(run?.difficulty==='nightmare'?2:run?.difficulty==='veteran'?1:0)));const i={id:uid(),type:base[1],ilvl,rarity:'relic',name:`${base[0]} ${epi}`,atk:0,def:0,hp:0,affixType:null,affixValue:0,enhance:0,classLock:cls,relicPower:pow[0],relicPowerName:pow[1],relicPowerDesc:pow[2],relicKey:`${cls}:${base[0]}:${epi}:${pow[0]}`};if(i.type==='weapon')i.atk=Math.round((7+ilvl*1.18)*2.25);if(i.type==='armor'){i.def=Math.round((4+ilvl*.62)*2.05);i.hp=Math.round((12+ilvl*1.8)*2)}if(i.type==='charm'){i.atk=Math.round((2+ilvl*.44)*2);i.def=Math.round((2+ilvl*.34)*2);i.hp=Math.round((8+ilvl*1.05)*2)}i.value=Math.round(ilvl*22);return normalizeItemV132(i)}
-function syncRoomProfile(){if(!profile||!roomCode||room?.run||snapshot?.run)return;const payload=playerJoinPayload();if(isHost&&room?.players?.[peerId]){const old=room.players[peerId],campX=old.campX,campY=old.campY,ready=old.ready,prep=old.prep||{};room.players[peerId]={...payload,campX,campY,ready,prep};broadcastSnapshot()}else if(bc)send({type:'profileSync',player:payload})}
+function syncRoomProfile(){if(!profile||!roomCode||room?.run||snapshot?.run)return;const payload=playerJoinPayload();if(isHost&&room?.players?.[peerId]){const old=room.players[peerId],campX=old.campX,campY=old.campY,worldX=old.worldX,worldY=old.worldY,facing=old.facing,ready=old.ready,prep=old.prep||{},connected=old.connected;room.players[peerId]={...payload,campX,campY,worldX,worldY,facing,ready,prep,connected};broadcastSnapshot()}else if(bc)send({type:'profileSync',player:payload})}
 
 function createRunPlayer(join){
   const c=CLASSES[join.classId],pow=join.power||{},mastery=join.mastery||1,asc=ascentEffectsV11(join);
@@ -1711,7 +1756,7 @@ function createRunPlayer(join){
     peerId:join.peerId,name:join.name,classId:join.classId,level:join.level,mastery,gearRating:join.gearRating||0,gearTraits:join.gearTraits||[],
     talents:join.talents||[],ascentNodes:join.ascentNodes||[],skillLevels:join.skillLevels||{s1:1,s2:1},power:pow,relicPowers:join.relicPowers||[],monsterMastery:join.monsterMastery||{},selectedSpec:join.selectedSpec,ascension:join.ascension||0,nemesisSeed:join.nemesisSeed||null,deathCache:join.deathCache||null,dropPity:structuredCloneSafe(join.dropPity||{relic:0,mythic:0}),boons:[],
     x:2,y:2,facing:join.facing||'south',maxHp,hp:maxHp,atk:Math.round((c.atk+(join.level-1)*2+(pow.atk||0))*(1+(join.ascension||0)*.01)),def:Math.round((c.def+Math.floor((join.level-1)/2)+(pow.def||0))*(1+(join.ascension||0)*.01)+(asc.def||0)),
-    res:maxRes,maxRes,downs:0,downed:false,dead:false,guarding:false,retaliation:false,
+    res:maxRes,maxRes,downs:0,downed:false,dead:false,downedAt:null,deadAt:null,guarding:false,retaliation:false,
     status:{poison:0,burn:0,bleed:0,partyDef:0,closingGuard:0},potions:3+(join.prep?.healer?1:0)+(join.prep?.merchantPotions||0)+(join.autoPotionV131?1:0),xpMult:join.prep?.feast?1.08:1,submitted:false,
     runLoot:{xp:0,mastery:0,skill1:0,skill2:0,gold:0,common:0,rare:0,kills:0,bosses:0,elites:0,items:[],secureId:null,namedParts:{},killsByKind:{},partsByKind:{},nemesisDefeated:[]},combat:{damage:0,healing:0,revives:0,parts:0},
     secondLightUsed:false,frenzyCharges:0,quickUsed:false,visualAction:null
@@ -1766,7 +1811,7 @@ function playerJoinPayload(){
 }
 function setupChannel(code){
   if(bc)bc.close();roomCode=code.toUpperCase();bc=new BroadcastChannel('ashfall-mp-'+roomCode);
-  bc.onmessage=e=>onNetwork(e.data);
+  bc.onmessage=e=>receiveTransportEventV141(e.data);startRemoteTransportV141(roomCode,isHost);
   $('roomChoice').style.display='none';$('roomPanel').style.display='block';$('roomCodeText').textContent=roomCode;$('roomBadge').textContent=`Room ${roomCode}`;
 }
 
@@ -1822,21 +1867,22 @@ function joinRoom(){
   const code=$('joinCode').value.trim().toUpperCase();if(!code)return toast('Enter a room code');
   isHost=false;setupChannel(code);send({type:'join',player:playerJoinPayload()});$('hostLabel').textContent='Joining...';toast('Join request sent');
 }
-function send(msg){if(bc)bc.postMessage(msg)}
+function send(msg){const event={...msg,_transportId:`${peerId}:${Date.now()}:${Math.random().toString(36).slice(2,8)}`,_senderPeerId:peerId};rememberTransportEventV141(event._transportId);if(bc)bc.postMessage(event);remotePostV141(event)}
 function broadcastSnapshot(){if(isHost&&room)send({type:'snapshot',room});snapshot=structuredCloneSafe(room);renderAll()}
 function structuredCloneSafe(o){return JSON.parse(JSON.stringify(o))}
 function onNetwork(msg){
   if(!msg)return;
   if(isHost){
     if(msg.type==='join'){
+      if(room.run||room.worldV14)return send({type:'reject',peerId:msg.player.peerId,reason:'The party is already in the field. Join when they return to Emberwatch.'});
       if(Object.keys(room.players).length>=4)return send({type:'reject',peerId:msg.player.peerId,reason:'Party is full.'});
       const slot=Object.keys(room.players).length;msg.player.campX=13+(slot%4)*2;msg.player.campY=15;msg.player.prep=msg.player.prep||{};room.players[msg.player.peerId]=msg.player;room.log.push(`${msg.player.name} joined the party.`);broadcastSnapshot();return
     }
-    if(msg.type==='profileSync'){const old=room.players[msg.player.peerId];if(old&&!room.run){room.players[msg.player.peerId]={...msg.player,campX:old.campX,campY:old.campY,ready:old.ready,prep:old.prep||{}};broadcastSnapshot()}return}
-    if(msg.type==='campMove'){hostCampMove(msg.peerId,msg.dx,msg.dy);return}if(msg.type==='worldMoveV14'){hostWorldMoveV14(msg.peerId,msg.dx,msg.dy);return}if(msg.type==='enterWorldV14'){enterWorldV14();return}if(msg.type==='leaveWorldV14'){leaveWorldV14();return}
+    if(msg.type==='profileSync'){const old=room.players[msg.player.peerId];if(old&&!room.run){room.players[msg.player.peerId]={...msg.player,campX:old.campX,campY:old.campY,worldX:old.worldX,worldY:old.worldY,facing:old.facing,ready:old.ready,prep:old.prep||{},connected:old.connected};broadcastSnapshot()}return}
+    if(msg.type==='campMove'){hostCampMove(msg.peerId,msg.dx,msg.dy);return}if(msg.type==='worldMoveV14'){hostWorldMoveV14(msg.peerId,msg.dx,msg.dy);return}if(msg.type==='worldInteractV141'){hostWorldInteractV141(msg.peerId,msg.objectId);return}if(msg.type==='enterWorldV14'){enterWorldV14(msg.peerId);return}if(msg.type==='leaveWorldV14'){leaveWorldV14(msg.peerId);return}
     if(msg.type==='campPrep'){hostCampPrep(msg.peerId,msg.prep);return}
     if(msg.type==='campMerchantPrep'){const p=room.players[msg.peerId];if(p&&!room.run){p.prep=p.prep||{};p.prep.merchantPotions=(p.prep.merchantPotions||0)+(msg.qty||0);broadcastSnapshot()}return}
-    if(msg.type==='leave'){delete room.players[msg.peerId];if(room.run?.players?.[msg.peerId])room.run.players[msg.peerId].connected=false;broadcastSnapshot();return}
+    if(msg.type==='leave'){delete room.players[msg.peerId];const rp=room.run?.players?.[msg.peerId];if(rp){rp.connected=false;rp.dead=true;rp.downed=false;rp.deadAt=Date.now();rp.hp=0;rp.submitted=true;rp.pending=null;room.run.log.push(`${rp.name} disconnected and left the hunt.`)}broadcastSnapshot();return}
     if(msg.type==='command'){hostCommand(msg);return}
     if(msg.type==='quickActionV132'){hostQuickActionV132(msg.peerId,msg.quickType);return}
     if(msg.type==='cancelActionV131'){hostCancelActionV131(msg.peerId);return}
@@ -1848,10 +1894,15 @@ function onNetwork(msg){
     if(msg.type==='snapshot'){
       if(!msg.room?.players?.[peerId])return;
       snapshot=msg.room;room=msg.room;$('hostLabel').textContent=`Host: ${room.players[room.hostPeerId]?.name||'Hunter'}`;
-      if(room.run)hide('lobbyOverlay');else if(profile)hide('lobbyOverlay');
-      renderLobby();if(!room.run)enterSharedCamp();renderAll();return
+      if(room.worldV14&&profile&&!ensureWorldProfileV14(profile).enteredLowlands){profile.worldV14.enteredLowlands=true;persistProfile()}
+      if(room.run)hide('lobbyOverlay');
+      renderLobby();if(!room.run){if(room.worldSelectionV141)show('lobbyOverlay');else enterSharedCamp()}renderAll();return
     }
     if(msg.type==='reject'&&msg.peerId===peerId){toast(msg.reason);leaveRoom(true);return}
+    if(msg.type==='worldRewardV141'&&msg.peerId===peerId){applyWorldResourceRewardV141(msg.reward);return}
+    if(msg.type==='worldDelveDiscoveredV141'&&msg.peerId===peerId){applyWorldDelveDiscoveryV141(msg.delveId);return}
+    if(msg.type==='worldNoticeV141'&&msg.peerId===peerId){notifyV11(msg.kind||'info',msg.title||'FIELD UPDATE',msg.detail||'');return}
+    if(msg.type==='leave'&&msg.peerId===room?.hostPeerId){leaveRoom(false);toast('The party leader left the room.');return}
     if(msg.type==='settlement'&&msg.peerId===peerId){applySettlement(msg.settlement);return}
   }
 }
@@ -1864,6 +1915,7 @@ const CAMP_BLOCK_RECTS_V132=[
   [23,3,28,5],    // crafter tent
   [23,11,28,13],  // healer tent
   [8,1,12,2],     // stash
+  [10,4,13,6],    // relocated Hunt Board footprint
   [18,1,23,2],    // war table edge
   [18,5,23,6],    // trophy display
   [16,13,21,14]   // wager table
@@ -2016,7 +2068,7 @@ function toggleReady(){
 function launchExpedition(){
   if(!isHost||!room)return;
   combatFloaters=[];combatFeed=[];worldFx=[];
-  const mission=MISSIONS[room.missionId],delve=delveByIdV132(room.delveId),party=Object.values(room.players);if(!party.length)return;
+  const mission=MISSIONS[room.missionId],delve=delveByIdV132(room.delveId),party=Object.values(room.players).filter(p=>p.connected!==false);if(!party.length)return;
   if(!party.every(p=>p.ready))return toast('Everyone must Ready Up first');
   const diff=DIFFICULTIES[room.difficulty||'normal'];const blocked=party.filter(p=>{if(delve)return p.level<Math.max(diff.minLevel,delve.minLevel)||(p.gearRating||0)<delve.minGear;return p.level<Math.max(diff.minLevel,mission.minLevel||1)||(p.gearRating||0)<(mission.minGear||0)||(mission.requiredTrophy&&!p.trophies?.includes(mission.requiredTrophy))});if(blocked.length)return toast(`Cannot launch: ${blocked.map(p=>delve?`${p.name} needs Lv ${Math.max(diff.minLevel,delve.minLevel)} / Gear ${delve.minGear}`:`${p.name} needs Lv ${Math.max(diff.minLevel,mission.minLevel||1)} / Gear ${mission.minGear||0}${mission.requiredTrophy?` / ${mission.requiredTrophy}`:''}`).join(' • ')}`);
   const modifier=structuredCloneSafe(pick(MODIFIERS));
@@ -2026,7 +2078,7 @@ function launchExpedition(){
   party.forEach(p=>p.prep={});
   generateStage(room.run,mission);
   room.log.push(`${delve?'Delve':'Expedition'} launched: ${delve?.name||mission.name} — ${diff.name}.`);room.run.log.push(`Condition: ${modifier.name} — ${modifier.desc}`);if(delve)room.run.log.push(`DELVE CONTRACT — ${delve.focus}. Clear ${delve.depths} dungeon floors and defeat ${delve.bossName}.`);if(room.run.dailyBoost>1)room.run.log.push(`DAILY HUNT: +25% reward value for ${mission.name}.`);if(room.run.ghostTarget)room.run.log.push(`Ghost pace: your best clear is ${room.run.ghostTarget}s.`);if(room.run.deepHunt?.active){room.run.log.push(`DEEP HUNT ACTIVE — track the target, choose branching routes, secure extraction sites, or press onward for greater rewards.`);room.run.log.push(`Spoor required to reveal the quarry: ${room.run.deepHunt.cfg.spoorRequired}.`)}room.run.log.push(`Depth 1. Every hunter gets one action per round.`);
-  Object.values(room.players).forEach(p=>p.ready=false);selectedTargetId=null;hide('lobbyOverlay');broadcastSnapshot();
+  Object.values(room.players).forEach(p=>p.ready=false);room.worldSelectionV141=null;selectedTargetId=null;hide('lobbyOverlay');broadcastSnapshot();
 }
 
 
@@ -2602,11 +2654,11 @@ function hostCommand(msg){
   if(allActionsIn(run))resolveRound(run);broadcastSnapshot()
 }
 function allActionsIn(run){
-  return Object.values(run.players).filter(p=>!p.dead&&!p.downed).every(p=>p.submitted)
+  return Object.values(run.players).filter(p=>p.connected!==false&&!p.dead&&!p.downed).every(p=>p.submitted)
 }
 function resolveRound(run){
   run.phase='resolve';
-  const order=Object.values(run.players).filter(p=>!p.dead&&!p.downed).sort((a,b)=>b.level-a.level);
+  const order=Object.values(run.players).filter(p=>p.connected!==false&&!p.dead&&!p.downed).sort((a,b)=>b.level-a.level);
   order.forEach(p=>resolvePlayerAction(run,p,p.pending||{type:'guard'}));
   run.enemies=run.enemies.filter(e=>e.hp>0);
   if(!run.enemies.length){return onStageClear(run)}
@@ -2623,7 +2675,7 @@ function resolvePlayerAction(run,p,a){
   if(a.type==='move'){const nx=p.x+a.dx,ny=p.y+a.dy;if(isWalk(run.map,nx,ny)&&!run.enemies.some(e=>enemyOccupiesTile(e,nx,ny))&&!Object.values(run.players).some(q=>q.peerId!==p.peerId&&!q.dead&&q.x===nx&&q.y===ny)){p.facing=rangerFacingFromDelta(a.dx,a.dy,p.facing||'south');p.x=nx;p.y=ny;const dc=run.deathCaches?.find(c=>!c.collected&&c.peerId===p.peerId&&c.x===nx&&c.y===ny);if(dc){dc.collected=true;p.deathCacheCollected=true;p.runLoot.gold+=(dc.cache.gold||0);if(dc.cache.item)p.runLoot.items.push(dc.cache.item);run.log.push(`${p.name} recovers a Fallen Expedition cache.`)}collectEmberwoodLootable(run,p,nx,ny)}return}
   if(a.type==='guard'){p.guarding=true;p.res=clamp(p.res+3,0,p.maxRes);if(p.classId==='warden'&&p.talents.includes('retaliation'))p.retaliation=true;if(p.classId==='templar'&&p.talents.includes('aegis'))Object.values(run.players).forEach(q=>q.status.partyDef=1);pushCombatFloaterPlayer(p,'GUARD','#9bcfff',10,650);run.log.push(`${p.name} braces.`);return}
   if(a.type==='potion'){if(p.potions>0){p.potions--;const heal=Math.round(p.maxHp*.42*boonValue(p,'heal',1)*specHeal(p)),actual=Math.min(heal,p.maxHp-p.hp);p.hp+=actual;trackHealing(p,actual);pushCombatFloaterPlayer(p,`+${actual}`,'#83dfa0',12,900);const hppt=combatPointPlayer(p);addRingFx(hppt.x,hppt.y+10,'#68d890',20,480,2);run.log.push(`${p.name} drinks a potion for ${actual} HP.`)}return}
-  if(a.type==='revive'){const q=findAdjacentDowned(run,p);if(q){q.downed=false;q.hp=Math.round(q.maxHp*.36);p.combat.revives++;run.log.push(`${p.name} revives ${q.name}.`)}return}
+  if(a.type==='revive'){const q=findAdjacentDowned(run,p);if(q){q.downed=false;q.downedAt=null;q.deadAt=null;q.hp=Math.round(q.maxHp*.36);p.combat.revives++;run.log.push(`${p.name} revives ${q.name}.`)}return}
   if(a.type==='attack'){let e=a.targetId&&run.enemies.find(x=>x.id===a.targetId&&x.hp>0);if(!e)e=findTarget(run,p,basicActionRangeV132(p),a.targetId);if(e&&distanceToEnemy(p,e)===2&&isMeleeHunterV132(p)){if(!engageStepV132(run,p,e)){run.log.push(`${p.name} cannot find a clear Engage Step.`);return}}if(e&&distanceToEnemy(p,e)<=effectiveRange(p)){p.facing=rangerFacingToward(p,e);dealBasic(run,p,e,a.targetPartId)}else run.log.push(`${p.name} has no target in range.`);return}
   if(a.type==='skill1'||a.type==='skill2'){const aimed=a.targetId&&run.enemies.find(e=>e.id===a.targetId&&e.hp>0);if(aimed)p.facing=rangerFacingToward(p,aimed);useClassSkill(run,p,a.type==='skill1'?1:2,a.targetId,a.targetPartId);return}
 }
@@ -2680,7 +2732,7 @@ function useClassSkill(run,p,n,targetId=null,targetPartId=null){
   }else if(p.classId==='templar'){
     if(n===1){const e=findTarget(run,p,3,targetId);if(!e)return;p.facing=rangerFacingToward(p,e);triggerClassVisualAction(p,'smite',[e]);let d=Math.max(2,Math.round(p.atk*1.4*bonus*(hasRelic(p,'judgment')?1.2:1))-Math.floor(e.def*.3));d=applyPlayerDamage(run,p,e,d,targetPartId,'smite');const selfHeal=Math.round(d*.25*boonValue(p,'heal',1)*specHeal(p));p.hp=Math.min(p.maxHp,p.hp+selfHeal);trackHealing(p,selfHeal);pushCombatFloaterPlayer(p,`+${selfHeal}`,'#83dfa0',11,800);run.log.push(`${p.name} Smites for ${d}.`);if(e.hp<=0)rewardKill(run,p,e)}
     else{let q=Object.values(run.players).filter(x=>!x.dead).sort((a,b)=>(a.downed?-1:0)-(b.downed?-1:0)||a.hp/a.maxHp-b.hp/b.maxHp)[0];if(!q)return;triggerClassVisualAction(p,'radiant',[q]);
-      if(q.downed){q.downed=false;q.hp=Math.round(q.maxHp*(hasRelic(p,'martyr_light')?.50:.38));p.combat.revives++;pushCombatFloaterPlayer(q,'REVIVED!','#f1cf72',14,1100);if(p.talents.includes('secondlight')&&!p.secondLightUsed){p.res=Math.min(p.maxRes,p.res+skill.cost);p.secondLightUsed=true}run.log.push(`${p.name} raises ${q.name} with Radiant Hand.`)}
+      if(q.downed){q.downed=false;q.downedAt=null;q.deadAt=null;q.hp=Math.round(q.maxHp*(hasRelic(p,'martyr_light')?.50:.38));p.combat.revives++;pushCombatFloaterPlayer(q,'REVIVED!','#f1cf72',14,1100);if(p.talents.includes('secondlight')&&!p.secondLightUsed){p.res=Math.min(p.maxRes,p.res+skill.cost);p.secondLightUsed=true}run.log.push(`${p.name} raises ${q.name} with Radiant Hand.`)}
       else{let heal=Math.round(p.maxHp*.28*bonus);if(p.talents.includes('grace'))heal=Math.round(heal*1.3);if(hasRelic(p,'saint_hand'))heal=Math.round(heal*1.2);heal=Math.round(heal*boonValue(p,'heal',1)*specHeal(p));const actual=Math.min(heal,q.maxHp-q.hp);q.hp+=actual;trackHealing(p,actual);pushCombatFloaterPlayer(q,`+${actual}`,'#83dfa0',12,900);run.log.push(`${p.name} heals ${q.name} for ${actual}.`)}
     }
   }else if(p.classId==='shadow'){
@@ -2784,17 +2836,26 @@ function enemyAttack(run,e,p){
 }
 function downPlayer(run,p){
   const maxDowns=(p.classId==='berserker'&&p.talents.includes('undying'))?3:2;
-  if(p.downs>=maxDowns){p.dead=true;p.downed=false;p.hp=0;run.log.push(`${p.name} is DEAD and spectating.`);if(p.peerId===peerId)flowBannerV13('HUNTER FALLEN','Spectate the party until the hunt ends.','boss','NO REVIVES REMAIN')}
-  else{p.downs++;p.downed=true;p.hp=0;p.submitted=true;run.log.push(`${p.name} is DOWNED (${p.downs}/${maxDowns}).`);if(p.peerId===peerId)flowBannerV13('YOU ARE DOWNED','An adjacent ally can revive you.','boss',`${maxDowns-p.downs} DOWN${maxDowns-p.downs===1?'':'S'} REMAIN`);else notifyV11('boss',`${p.name.toUpperCase()} DOWNED`,'Get adjacent and use Revive.',{life:5000,sound:false})}
+  p.visualAction=null;p.guarding=false;p.pending=null;
+  if(p.downs>=maxDowns){p.dead=true;p.downed=false;p.deadAt=Date.now();p.downedAt=null;p.hp=0;p.submitted=true;run.log.push(`${p.name} is DEAD and spectating.`);if(p.peerId===peerId)flowBannerV13('HUNTER FALLEN','Spectate the party until the hunt ends.','boss','NO REVIVES REMAIN')}
+  else{p.downs++;p.downed=true;p.downedAt=Date.now();p.deadAt=null;p.hp=0;p.submitted=true;run.log.push(`${p.name} is DOWNED (${p.downs}/${maxDowns}).`);if(p.peerId===peerId)flowBannerV13('YOU ARE DOWNED','An adjacent ally can revive you.','boss',`${maxDowns-p.downs} DOWN${maxDowns-p.downs===1?'':'S'} REMAIN`);else notifyV11('boss',`${p.name.toUpperCase()} DOWNED`,'Get adjacent and use Revive.',{life:5000,sound:false})}
 }
 function checkWipe(run){
-  const alive=Object.values(run.players).filter(p=>!p.dead&&!p.downed);
+  const alive=Object.values(run.players).filter(p=>p.connected!==false&&!p.dead&&!p.downed);
   if(alive.length)return false;
   run.phase='ended';run.result='wipe';settleRun(false,'Party wiped.');return true
 }
 
 function preparePathChoice(run){run.phase='path';run.pathChoices=[];if(run?.deepHunt?.active){run.pathChoices=deepChoicesForNextDepth(run)||[];run.deepHunt.revealedDepth=Math.max(run.deepHunt.revealedDepth||2,run.depth+1);run.log.push(run.deepHunt.bossRevealed?'The quarry is near. Choose whether to challenge it now or continue the hunt.':'The expedition branches. Choose the next route.')}else{const pool=[...PATH_CHOICES];while(run.pathChoices.length<2&&pool.length){run.pathChoices.push(pool.splice(rand(0,pool.length-1),1)[0])}run.log.push('The expedition forks. Party leader must choose the next route.')}}
-function choosePathChoice(i){if(!isHost||!room?.run||room.run.phase!=='path')return;const run=room.run,path=run.pathChoices?.[i];if(!path)return;if(run.deepHunt?.active){run.deepHunt.currentNode=structuredCloneSafe(path);run.deepHunt.history.push(structuredCloneSafe(path));applyDeepNodeEntry(run,path)}else run.currentPath=structuredCloneSafe(path);run.huntHeat=Math.min(2,(run.huntHeat||1)+.12);Object.values(run.players).filter(p=>!p.dead).forEach(p=>{if(path.boon){p.boons=p.boons||[];if(!p.boons.includes(path.boon))p.boons.push(path.boon)}if(path.heal){const h=Math.round(p.maxHp*path.heal);p.hp=Math.min(p.maxHp,p.hp+h)}});run.depth++;run.round++;run.log.push(`Route chosen: ${path.name}.${path.boon?` Boon gained: ${boonById(path.boon)?.name}.`:''} Hunt Heat rises to +${Math.round((huntHeatV10(run)-1)*100)}% reward pressure.`);generateStage(run,MISSIONS[run.missionId]);broadcastSnapshot()}
+function choosePathChoice(i){
+  if(!isHost||!room?.run||room.run.phase!=='path')return;const run=room.run,path=run.pathChoices?.[i];if(!path)return;
+  if(run.deepHunt?.active){
+    run.deepHunt.currentNode=structuredCloneSafe(path);run.deepHunt.history.push(structuredCloneSafe(path));applyDeepNodeEntry(run,path);run.depth=path.type==='boss'?runDepthLimit(run):run.depth+1;
+  }else{
+    run.currentPath=structuredCloneSafe(path);run.huntHeat=Math.min(2,(run.huntHeat||1)+.12);Object.values(run.players).filter(p=>p.connected!==false&&!p.dead).forEach(p=>{if(path.boon){p.boons=p.boons||[];if(!p.boons.includes(path.boon))p.boons.push(path.boon)}if(path.heal){const h=Math.round(p.maxHp*path.heal);p.hp=Math.min(p.maxHp,p.hp+h)}});run.depth++;
+  }
+  run.round++;run.log.push(`Route chosen: ${path.name}.${path.boon?` Boon gained: ${boonById(path.boon)?.name}.`:''} Hunt Heat rises to +${Math.round((huntHeatV10(run)-1)*100)}% reward pressure.`);generateStage(run,MISSIONS[run.missionId]);broadcastSnapshot()
+}
 
 function onStageClear(run){
   const mission=MISSIONS[run.missionId],node=deepCurrentNode(run);
@@ -2808,7 +2869,7 @@ function onStageClear(run){
 function hostVote(pid,vote){
   const run=room.run;if(!run||run.phase!=='choice'||!run.players[pid]||run.players[pid].dead)return;
   run.votes[pid]=vote;
-  const voters=Object.values(run.players).filter(p=>!p.dead),votes=Object.values(run.votes);
+  const voters=Object.values(run.players).filter(p=>p.connected!==false&&!p.dead),votes=Object.entries(run.votes).filter(([id])=>run.players[id]?.connected!==false&&!run.players[id]?.dead).map(([,vote])=>vote);
   if(votes.length>=voters.length){
     if(votes.filter(v=>v==='extract').length>=Math.ceil(voters.length/2)){
       if(run?.deepHunt?.active && !deepCurrentNode(run)?.canExtract){
@@ -2873,7 +2934,7 @@ function applySettlement(s){
   if(!profile)return;ensureProfileShape(profile);
   profile.lifetime.runs++;if(s.success){profile.lifetime.success++;profile.lifetime.huntStreak++;profile.lifetime.bestStreak=Math.max(profile.lifetime.bestStreak,profile.lifetime.huntStreak);if(s.downs===0){profile.lifetime.flawless++;}}else{profile.lifetime.wipes++;profile.lifetime.huntStreak=0}
   if(s.isWorldSkirmish){const w=ensureWorldProfileV14(profile),kb=s.killsByKind||{};w.contracts.wolves+=(kb.wolf||0);if(s.worldEncounter?.elite)w.contracts.elites+=1;checkWorldContractsV14()}profile.lifetime.bestDepth=Math.max(profile.lifetime.bestDepth||0,s.depth);profile.lifetime.totalDepths=(profile.lifetime.totalDepths||0)+s.depth;profile.lifetime.kills+=(s.kills||0);profile.lifetime.bosses+=(s.bosses||0);profile.lifetime.elites+=(s.elites||0);profile.lifetime.partsBroken+=(s.partsBroken||0);
-  const scoreKey=s.isDelve?`delve:${s.delveId}:${s.difficulty||'normal'}`:`${s.missionId}:${s.difficulty||'normal'}`;profile.bestScores[scoreKey]=Math.max(profile.bestScores[scoreKey]||0,s.score||0);if(s.success)profile.bestTimes[scoreKey]=profile.bestTimes[scoreKey]==null?s.elapsed:Math.min(profile.bestTimes[scoreKey],s.elapsed);
+  const scoreKey=s.isWorldSkirmish?`surface:${s.worldEncounter?.id||s.missionId}:${s.difficulty||'normal'}`:s.isDelve?`delve:${s.delveId}:${s.difficulty||'normal'}`:`${s.missionId}:${s.difficulty||'normal'}`;profile.bestScores[scoreKey]=Math.max(profile.bestScores[scoreKey]||0,s.score||0);if(s.success)profile.bestTimes[scoreKey]=profile.bestTimes[scoreKey]==null?s.elapsed:Math.min(profile.bestTimes[scoreKey],s.elapsed);
   profile.xp+=s.xp;while(profile.xp>=xpNext(profile.level)){profile.xp-=xpNext(profile.level);profile.level++;celebrateLevelUpV11(profile.level)}
   const omV11=masteryLevel(profile.classMastery[profile.classId]||0);profile.classMastery[profile.classId]=(profile.classMastery[profile.classId]||0)+s.mastery;const nmV11=masteryLevel(profile.classMastery[profile.classId]||0);if(nmV11>omV11)notifyV11('skill',`CLASS MASTERY ${nmV11}`,nmV11%2===1?"A new Hunter's Ascent point is available.":'Permanent class power increased.',{life:5600});const sx=profile.skillXp[profile.classId]||{s1:0,s2:0},os1V11=skillLevel(sx.s1),os2V11=skillLevel(sx.s2);sx.s1+=s.skill1;sx.s2+=s.skill2;profile.skillXp[profile.classId]=sx;const ns1V11=skillLevel(sx.s1),ns2V11=skillLevel(sx.s2);if(ns1V11>os1V11)notifyV11('skill',`${CLASSES[profile.classId].s1.name.toUpperCase()} — SKILL ${ns1V11}`,'Skill proficiency increased.');if(ns2V11>os2V11)notifyV11('skill',`${CLASSES[profile.classId].s2.name.toUpperCase()} — SKILL ${ns2V11}`,'Skill proficiency increased.');
   profile.gold+=s.gold;profile.materials.common+=s.common;profile.materials.rare+=s.rare;if(s.bossTrophy==='The World Eater'){profile.ashMarks=(profile.ashMarks||0)+1;toast('GRAND HUNT CLEAR — +1 ASH MARK')}Object.entries(s.namedParts||{}).forEach(([k,v])=>profile.monsterParts[k]=(profile.monsterParts[k]||0)+v);
@@ -2921,14 +2982,19 @@ hostCommand=function(msg){
 
 function renderMinimap(r){
   if(!mctx||!minimapCanvas)return;mctx.clearRect(0,0,minimapCanvas.width,minimapCanvas.height);
-  const sx=minimapCanvas.width/W,sy=minimapCanvas.height/H,run=r?.run;
+  const sx=minimapCanvas.width/W,sy=minimapCanvas.height/H,run=r?.run,world=r?.worldV14;
   if(run?.map){
     for(let y=0;y<H;y++)for(let x=0;x<W;x++){const t=run.map[y][x];mctx.fillStyle=t==='wall'?'#27303d':t==='tree'?'#234634':t==='rock'?'#4a565b':t==='bossmark'?'#914836':t==='path'?'#7a6648':t==='grass'?'#33563b':'#3c4657';mctx.fillRect(x*sx,y*sy,Math.ceil(sx),Math.ceil(sy))}
     run.enemies?.filter(e=>e.hp>0).forEach(e=>{mctx.fillStyle=e.boss?'#ff5a50':e.id===selectedTargetId?'#77e4ef':'#d46b65';const sz=e.boss?Math.max(4,(e.size||3)*2):3;mctx.fillRect(e.x*sx-sz/2,e.y*sy-sz/2,sz,sz)});
-    Object.values(run.players||{}).forEach(q=>{if(q.dead)return;mctx.fillStyle=q.peerId===peerId?'#8be9ff':CLASS_FX_COLOR[q.classId]||'#8fd39e';mctx.fillRect(q.x*sx-2,q.y*sy-2,5,5)});
+    Object.values(run.players||{}).forEach(q=>{if(q.dead||q.connected===false)return;mctx.fillStyle=q.downed?'#ef5f61':q.peerId===peerId?'#8be9ff':CLASS_FX_COLOR[q.classId]||'#8fd39e';mctx.fillRect(q.x*sx-2,q.y*sy-2,5,5)});
     const me=run.players?.[peerId],boss=run.enemies?.find(e=>e.boss&&e.hp>0);$('objectiveLines').innerHTML=`<b>${MISSIONS[run.missionId].name}</b> • <span class="zone-stage">${run.zoneStageName||zoneStageName(run)}</span> • ${run.depth}/${runDepthLimit(run)}<br>${boss?`Target: ${boss.name} • Phase ${boss.bossPhase||1}${boss.kind==='worldeater'?` — ${worldEaterPhaseName(boss)}`:''} • ${Math.max(0,boss.hp).toLocaleString()} HP`:`Enemies remaining: ${run.enemies.filter(e=>e.hp>0).length}`}<br>${run.bossTelegraph?`<span class="bosswarn">⚠ ${run.bossTelegraph}</span>`:`Round ${run.round} • ${run.phase.toUpperCase()}`}<div class="living-strip"><span class="living-chip heat">HUNT HEAT +${Math.round((huntHeatV10(run)-1)*100)}%</span><span class="living-chip loot">CARRIED VALUE ~${carriedLootValueV10(me).toLocaleString()}</span>${run.deepHunt?.active?`<span class="living-chip apex">SPOOR ${run.deepHunt.spoor}/${run.deepHunt.cfg.spoorRequired}</span>`:''}${run.enemies.some(e=>e.trait==='APEX MINI-BOSS'||e.trait==='ZONE LIEUTENANT')?'<span class="living-chip apex">APEX ACTIVE</span>':''}${deepCurrentNode(run)?.canExtract?'<span class="living-chip clear">EXTRACTION SITE</span>':''}</div>${run.deepChallenge&&!run.deepChallenge._resolved?`<div class="eventwarn">${run.deepChallenge.label}${run.deepChallenge.deadline?` • BONUS DEADLINE R${run.deepChallenge.deadline}`:''}</div>`:''}`;
+  }else if(world?.map){
+    for(let y=0;y<H;y++)for(let x=0;x<W;x++){const t=world.map[y][x];mctx.fillStyle=t==='tree'?'#183c2a':t==='rock'?'#4e5658':t==='path'?'#806845':'#2f5839';mctx.fillRect(x*sx,y*sy,Math.ceil(sx),Math.ceil(sy))}
+    world.resources?.filter(o=>!o.done).forEach(o=>{mctx.fillStyle=o.kind==='cache'?'#e8bc62':'#72c779';mctx.fillRect(o.x*sx-2,o.y*sy-2,4,4)});world.entrances?.forEach(o=>{mctx.fillStyle='#ba83e7';mctx.fillRect(o.x*sx-2.5,o.y*sy-2.5,5,5)});world.encounters?.filter(worldEncounterAvailableV14).forEach(o=>{mctx.fillStyle=o.elite?'#ff7c56':'#d76761';mctx.fillRect(o.x*sx-2,o.y*sy-2,4,4)});mctx.fillStyle='#e6c477';mctx.fillRect(2*sx-2,9*sy-3,5,6);
+    Object.values(r?.players||{}).forEach(q=>{if(q.connected===false)return;mctx.fillStyle=q.peerId===peerId?'#8be9ff':CLASS_FX_COLOR[q.classId]||'#8fd39e';mctx.fillRect((q.worldX??5)*sx-2,(q.worldY??9)*sy-2,5,5)});
+    $('objectiveLines').innerHTML=`<b>Emberwood Lowlands</b><br>Surface RPG • farm easier mobs • gather resources • discover Delves<span class="surface-chip-v14">E near a landmark to interact</span><div class="tiny" style="margin-top:4px">${worldContractsHTMLV14()}</div>`;
   }else{
-    mctx.fillStyle='#17251c';mctx.fillRect(0,0,minimapCanvas.width,minimapCanvas.height);activeCampObjects().forEach(o=>{mctx.fillStyle=o.type==='bonfire'?'#ff9b4e':o.type==='board'?'#e8c266':'#71849c';mctx.fillRect(o.x*sx-2,o.y*sy-2,5,5)});Object.values(r?.players||{}).forEach(q=>{mctx.fillStyle=q.peerId===peerId?'#8be9ff':'#8fd39e';mctx.fillRect((q.campX??14)*sx-2,(q.campY??15)*sy-2,5,5)});if(worldStateV14()){$('objectiveLines').innerHTML=`<b>Emberwood Lowlands</b><br>Surface RPG • farm easier mobs • gather resources • discover Delves<span class="surface-chip-v14">E near a landmark to interact</span><div class="tiny" style="margin-top:4px">${worldContractsHTMLV14()}</div>`}else{const first=profile&&!ensureWorldProfileV14(profile).enteredLowlands;$('objectiveLines').innerHTML=first?'<b>EMBERWATCH</b><br><span class="first-step-v14">FIRST STEPS: Follow the central road north and leave through the North Gate.</span><br><span class="tiny">The Hunt Board remains available for Deep Hunts and Delves.</span>':'<b>Emberwatch</b><br>Open-world hub • contracts • crafting • Deep Hunts • Delves';}
+    mctx.fillStyle='#17251c';mctx.fillRect(0,0,minimapCanvas.width,minimapCanvas.height);activeCampObjects().forEach(o=>{mctx.fillStyle=o.type==='bonfire'?'#ff9b4e':o.type==='board'?'#e8c266':o.type==='worldgate'?'#8bc7dd':'#71849c';mctx.fillRect(o.x*sx-2,o.y*sy-2,5,5)});Object.values(r?.players||{}).forEach(q=>{mctx.fillStyle=q.peerId===peerId?'#8be9ff':'#8fd39e';mctx.fillRect((q.campX??14)*sx-2,(q.campY??15)*sy-2,5,5)});const first=profile&&!ensureWorldProfileV14(profile).enteredLowlands;$('objectiveLines').innerHTML=first?'<b>EMBERWATCH</b><br><span class="first-step-v14">FIRST STEPS: Follow the central road north and leave through the North Gate.</span><br><span class="tiny">The Hunt Board remains available for Deep Hunts and Delves.</span>':'<b>Emberwatch</b><br>Open-world hub • contracts • crafting • Deep Hunts • Delves';
   }
 }
 
@@ -2967,7 +3033,7 @@ function renderCombatHudV11(r){const el=$('combatHudV11');if(!el)return;if(!prof
 function renderAscentProfileV11(){if(!profile)return;ensureProfileShape(profile);const mp=$('masteryPanel');if(mp&&!mp.querySelector('.ascent-mini'))mp.insertAdjacentHTML('beforeend',`<div class="ascent-mini"><b>${ascentAvailableV11(profile)} Ascent Point${ascentAvailableV11(profile)===1?'':'s'} available</b><br>${ascentSpentV11(profile)}/${ascentEarnedV11(profile)} invested • ${availableTalentPoints(profile)} core talent point${availableTalentPoints(profile)===1?'':'s'}</div><div class="profile-progress-v11"><div class="progress-tile-v11">GEAR<b>${gearRating(profile)}</b></div><div class="progress-tile-v11">ASCENSION<b>${profile.ascension}</b></div><div class="progress-tile-v11">BOSSES<b>${profile.lifetime.bosses||0}</b></div><div class="progress-tile-v11">STREAK<b>${profile.lifetime.huntStreak||0}</b></div></div>`);const tg=$('talentGrid');if(tg){const coreHTML=tg.innerHTML;tg.className='ascent-tree-host';tg.innerHTML=`<div class="core-talent-wrap"><div class="sectiontitle">Core Talents</div><div class="tiny">Permanent fundamentals earned through class mastery.</div><div class="grid3">${coreHTML}</div></div>${ascentHTMLV11(profile)}`;[...tg.querySelectorAll('.core-talent-wrap .talent')].forEach((el,i)=>{const t=TALENTS[profile.classId][i];if(t)el.onclick=()=>buyTalent(t.id)})}}
 
 function renderAll(){
-  const r=room||snapshot;draw(r?.run);renderParty(r);renderPlayer(r);renderRunLoot(r);renderLog(r);renderActions(r);renderCombatMeters(r);renderMinimap(r);renderGrandHuntHud(r?.run);renderCombatHudV11(r);syncHudSignalsV13(r);const wb=$('worldRegionBannerV14');if(wb)wb.classList.toggle('show',!!worldStateV14()&&!r?.run);renderLobby()
+  const r=room||snapshot;updateHudModeV141(r);draw(r?.run);renderParty(r);renderPlayer(r);renderRunLoot(r);renderLog(r);renderActions(r);renderCombatMeters(r);renderMinimap(r);renderGrandHuntHud(r?.run);renderCombatHudV11(r);syncHudSignalsV13(r);const wb=$('worldRegionBannerV14');if(wb)wb.classList.toggle('show',!!worldStateV14()&&!r?.run);renderLobby()
 }
 function renderPlayer(r){
   const p=r?.run?.players?.[peerId];
@@ -3251,7 +3317,7 @@ function drawStatusFx(run,now=performance.now()){
     if(e.status?.burn){ctx.save();ctx.globalCompositeOperation='lighter';ctx.fillStyle='#ff743c';for(let i=0;i<3;i++){const a=sec*3+i*2;ctx.fillRect(Math.round(q.x-5+i*5+Math.sin(a)*2),Math.round(q.y+8-Math.abs(Math.sin(a))*9),2,4)}ctx.restore()}
     if(e.status?.bleed){ctx.save();ctx.fillStyle='#d8424c';ctx.globalAlpha=.7;for(let i=0;i<2;i++)ctx.fillRect(q.x-5+i*9,q.y+13+((i+Math.floor(sec*4))%3),2,3);ctx.restore()}
   });
-  Object.values(run?.players||{}).filter(p=>!p.dead).forEach(p=>{const q=combatPointPlayer(p);
+  Object.values(run?.players||{}).filter(p=>p.connected!==false&&!p.dead&&!p.downed).forEach(p=>{const q=combatPointPlayer(p);
     if(Date.now()-(p.hitFlash||0)<150){ctx.save();ctx.globalAlpha=.35;ctx.fillStyle='#ff5d55';ctx.fillRect(q.x-10,q.y-4,20,24);ctx.restore()}
     if(p.guarding){ctx.save();ctx.strokeStyle='rgba(125,190,255,.45)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(q.x,q.y+11,15+Math.sin(sec*5)*1.5,0,Math.PI*2);ctx.stroke();ctx.restore()}
     if(p.classId==='berserker'&&p.frenzyCharges>0){ctx.save();ctx.strokeStyle='rgba(255,75,55,.6)';ctx.beginPath();ctx.arc(q.x,q.y+10,14+Math.sin(sec*7)*2,0,Math.PI*2);ctx.stroke();ctx.restore()}
@@ -3272,9 +3338,10 @@ function draw(run){
   drawEmberwoodAtmosphere(run);
   drawBossTelegraphZones(run);
   const me=run.players?.[peerId];if(me&&!me.dead){const rr=effectiveRange(me);ctx.fillStyle='rgba(88,177,225,.07)';for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(Math.abs(x-me.x)+Math.abs(y-me.y)<=rr&&isWalk(run.map,x,y))ctx.fillRect(x*TILE+1,y*TILE+1,TILE-2,TILE-2)}
+  Object.values(run.players).filter(p=>p.dead).forEach(drawRunPlayer);
   run.enemies.filter(e=>e.hp>0).forEach(drawEnemy);
   (run.deathCaches||[]).filter(c=>!c.collected).forEach(c=>{const x=c.x*TILE,y=c.y*TILE;ctx.fillStyle='#43272b';ctx.fillRect(x+6,y+9,20,17);ctx.strokeStyle='#df7474';ctx.strokeRect(x+5.5,y+8.5,21,18);ctx.fillStyle='#f1c06b';ctx.font='bold 11px monospace';ctx.fillText('✦',x+12,y+21)});
-  Object.values(run.players).forEach(drawRunPlayer);
+  Object.values(run.players).filter(p=>!p.dead).forEach(drawRunPlayer);
   drawEmberwoodProps(run,'over');
   drawRangerCombatEffects(run);
   drawShadowCombatEffects(run);
@@ -3311,7 +3378,7 @@ function drawCamp(){
   drawCampSprite('forge',2.25,4.0,5.6,4.6,1);
   drawCampSprite('crafter_tent',22.7,2.8,5.0,4.4,1);
   drawCampSprite('healer_tent',22.7,10.5,5.0,4.4,1);
-  drawCampSprite('hunt_board',13.2,.9,3.8,3.35,1);
+  drawCampSprite('hunt_board',10.2,3.85,3.8,3.35,1);
   drawCampSprite('stash',8.5,1.45,3.0,2.55,1);
   drawCampSprite('war_table',18.0,1.25,4.3,2.85,.98);
   drawCampSprite('trophy_wall',18.25,4.7,3.7,3.3,1);
@@ -3334,7 +3401,7 @@ function drawCamp(){
   ctx.save();for(let i=0;i<16;i++){const a=performance.now()*.001*(.72+i*.023)+i;ctx.fillStyle=`rgba(255,${145+i*4},70,${.10+.06*Math.sin(a)})`;ctx.fillRect(15*TILE-15+(i*5%30),10*TILE-Math.abs(Math.sin(a))*24,2,2)}ctx.restore();
   drawCampFocusV13();
   const label=(t,tx,ty)=>{ctx.font='bold 8px monospace';ctx.textAlign='center';ctx.fillStyle='rgba(235,240,247,.92)';ctx.shadowColor='#000';ctx.shadowBlur=3;ctx.fillText(t,tx*TILE+16,ty*TILE);ctx.shadowBlur=0};
-  label('HUNT BOARD',15,3);label('FORGE QUARTER',5,5);label('RELIC CRAFTER',25,4);label('HEALER',25,12);label('TRAINING YARD',5,13);label('STASH',10,2);label('WAR TABLE',20,2);label('TROPHY WALL',20,5);label('BONFIRE',15,8);label('CINDER’S WAGER',18,13);if((room||snapshot)?.merchant?.active)label('GILDED CARAVAN',27,8);ctx.textAlign='left';
+  label('HUNT BOARD',12,4.05);label('FORGE QUARTER',5,5);label('RELIC CRAFTER',25,4);label('HEALER',25,12);label('TRAINING YARD',5,13);label('STASH',10,2);label('WAR TABLE',20,2);label('TROPHY WALL',20,5);label('BONFIRE',15,8);label('CINDER’S WAGER',18,13);if((room||snapshot)?.merchant?.active)label('GILDED CARAVAN',27,8);ctx.textAlign='left';
   Object.values((room||snapshot)?.players||{}).forEach(drawCampPlayer)
 }
 function drawCampPlayer(p){
@@ -3351,13 +3418,13 @@ function tileRand01(x,y,o=0){return (tileSeed(x,y,o)%1000)/1000}
 function drawCampGround(){
   ctx.fillStyle='#142219';ctx.fillRect(0,0,canvas.width,canvas.height);
   for(let y=0;y<H;y++)for(let x=0;x<W;x++){
-    const northRoad=(y>=2&&y<=3&&x>=6&&x<=23),mainRoad=(x>=14&&x<=16&&y>=1&&y<=16),crossRoad=(y>=9&&y<=11&&x>=7&&x<=27);
+    const northRoad=(y>=2&&y<=3&&x>=6&&x<=23),mainRoad=(x>=14&&x<=16&&y>=1&&y<=16),crossRoad=(y>=9&&y<=11&&x>=7&&x<=27),boardSpur=(x>=11&&x<=14&&y>=5&&y<=6);
     const forgePad=(x>=2&&x<=8&&y>=4&&y<=9),eastPad=(x>=22&&x<=28&&y>=3&&y<=16),northPad=(x>=8&&x<=22&&y>=1&&y<=5);
-    if(forgePad||eastPad||northPad)drawCampTexture('stone_tex',x,y,.72);else if(northRoad||mainRoad||crossRoad)drawCampTexture('dirt_tex',x,y,.9);else if(!drawCampTexture('grass_tex',x,y,.84))drawTile('grass',x,y)
+    if(northRoad||mainRoad||crossRoad||boardSpur)drawCampTexture('dirt_tex',x,y,.9);else if(forgePad||eastPad||northPad)drawCampTexture('stone_tex',x,y,.72);else if(!drawCampTexture('grass_tex',x,y,.84))drawTile('grass',x,y)
   }
   for(let y=12;y<=17;y++)for(let x=8;x<=12;x++)drawCampTexture('wood_tex',x,y,.52);
   for(let y=12;y<=17;y++)for(let x=15;x<=21;x++)if((x+y)%3===0)drawCampTexture('wood_tex',x,y,.32);
-  ctx.fillStyle='rgba(28,43,31,.13)';ctx.fillRect(0,0,canvas.width,canvas.height)
+  ctx.save();ctx.fillStyle='rgba(91,62,36,.16)';ctx.fillRect(14*TILE,1*TILE,3*TILE,16*TILE);ctx.fillRect(7*TILE,9*TILE,21*TILE,3*TILE);ctx.fillRect(6*TILE,2*TILE,17*TILE,2*TILE);ctx.fillRect(11*TILE,5*TILE,4*TILE,2*TILE);ctx.strokeStyle='rgba(31,24,17,.25)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(14*TILE,1*TILE);ctx.lineTo(14*TILE,17*TILE);ctx.moveTo(17*TILE,1*TILE);ctx.lineTo(17*TILE,17*TILE);ctx.moveTo(7*TILE,9*TILE);ctx.lineTo(28*TILE,9*TILE);ctx.moveTo(7*TILE,12*TILE);ctx.lineTo(28*TILE,12*TILE);ctx.stroke();ctx.setLineDash([9,13]);ctx.strokeStyle='rgba(206,172,112,.12)';ctx.beginPath();ctx.moveTo(15.5*TILE,1*TILE);ctx.lineTo(15.5*TILE,17*TILE);ctx.moveTo(7*TILE,10.5*TILE);ctx.lineTo(28*TILE,10.5*TILE);ctx.stroke();ctx.setLineDash([]);ctx.lineWidth=1;for(let i=0;i<24;i++){const x=(tileSeed(i,7,141)%W)*TILE+8,y=(tileSeed(i,11,142)%H)*TILE+10;if(x>13*TILE&&x<18*TILE)continue;ctx.fillStyle=i%3?'rgba(111,137,89,.22)':'rgba(190,160,105,.18)';ctx.fillRect(x,y,2,2)}ctx.restore();ctx.fillStyle='rgba(28,43,31,.13)';ctx.fillRect(0,0,canvas.width,canvas.height)
 }
 
 function drawAmbientMapFx(run){
@@ -3448,10 +3515,10 @@ function drawTile(t,x,y){
 function drawRunPlayer(p){
   const x=p.x*TILE,y=p.y*TILE,c=CLASSES[p.classId];
   if(drawClassSpriteV7(p,false))return;
-  if(p.dead){ctx.globalAlpha=.35}ctx.fillStyle='rgba(0,0,0,.28)';ctx.fillRect(x+7,y+25,18,4);
+  if(p.dead||p.downed){ctx.save();ctx.translate(x+16,y+26);ctx.rotate((p.facing==='west'||p.facing==='north'?-1:1)*Math.PI*.48);ctx.globalAlpha=p.dead?.38:.78;ctx.fillStyle=c.color;ctx.fillRect(-7,-13,14,14);ctx.fillStyle='#dfbfa1';ctx.fillRect(-5,-20,10,9);ctx.restore();ctx.globalAlpha=1;return}
+  ctx.fillStyle='rgba(0,0,0,.28)';ctx.fillRect(x+7,y+25,18,4);
   ctx.fillStyle=c.color;ctx.fillRect(x+9,y+13,14,14);ctx.fillStyle='#dfbfa1';ctx.fillRect(x+11,y+6,10,9);ctx.fillStyle='#20242c';ctx.fillRect(x+10,y+5,12,4);
   if(p.peerId===peerId){ctx.strokeStyle='#8dd9ff';ctx.lineWidth=2;ctx.strokeRect(x+6,y+3,20,26);ctx.lineWidth=1}
-  if(p.downed){ctx.strokeStyle='#ef6f6f';ctx.beginPath();ctx.moveTo(x+6,y+6);ctx.lineTo(x+26,y+26);ctx.moveTo(x+26,y+6);ctx.lineTo(x+6,y+26);ctx.stroke()}
   ctx.globalAlpha=1
 }
 
@@ -3656,7 +3723,15 @@ function wireEffectTooltipsV132(){
   document.addEventListener('mouseover',e=>{const el=e.target.closest?.('.effect-hover-v132');if(!el||el.contains(e.relatedTarget))return;const tt=$('skillTooltip'),body=effectTooltipHTMLV132(el);if(!tt||!body)return;tt.innerHTML=body;tt.classList.add('show','effect-v132');placeEffectTooltipV132(el)});
   document.addEventListener('mouseout',e=>{const el=e.target.closest?.('.effect-hover-v132');if(!el||el.contains(e.relatedTarget))return;const tt=$('skillTooltip');tt?.classList.remove('show','effect-v132')})
 }
-function initInterfaceV132(){const dock=$('hudDockV132'),hud=$('combatHudV11');if(dock&&hud&&hud.parentElement!==dock)dock.appendChild(hud);wireProfileTabsV132();wireEffectTooltipsV132()}
+const HUD_RIGHT_GROUP_V141=new Set(['party','meters','loot','log']);
+function setHudPanelV141(id,force){
+  const panel=document.querySelector(`[data-hud-panel="${id}"]`),button=document.querySelector(`[data-hud-toggle="${id}"]`);if(!panel)return;const next=force==null?!panel.classList.contains('is-open'):!!force;
+  if(next&&HUD_RIGHT_GROUP_V141.has(id))HUD_RIGHT_GROUP_V141.forEach(other=>{if(other===id)return;document.querySelector(`[data-hud-panel="${other}"]`)?.classList.remove('is-open');document.querySelector(`[data-hud-toggle="${other}"]`)?.setAttribute('aria-pressed','false')});
+  panel.classList.toggle('is-open',next);button?.setAttribute('aria-pressed',String(next))
+}
+function updateHudModeV141(r){const activeHunter=!!profile&&!!r?.players?.[peerId];document.body.classList.toggle('has-profile-v141',activeHunter);document.body.classList.toggle('mode-run-v141',!!r?.run);document.body.classList.toggle('mode-world-v141',!!r?.worldV14&&!r?.run);document.body.classList.toggle('mode-camp-v141',activeHunter&&!r?.run&&!r?.worldV14)}
+function initHudV141(){document.querySelectorAll('[data-hud-toggle]').forEach(button=>button.addEventListener('click',()=>setHudPanelV141(button.dataset.hudToggle)));setHudPanelV141('party',true);setHudPanelV141('intel',true)}
+function initInterfaceV132(){const dock=$('hudDockV132'),hud=$('combatHudV11');if(dock&&hud&&hud.parentElement!==dock)dock.appendChild(hud);wireProfileTabsV132();wireEffectTooltipsV132();initHudV141()}
 
 const renderProfileBaseV132=renderProfile;renderProfile=function(){ensureProfileShape(profile);renderProfileBaseV132();renderProfileExtrasV132()};
 function gearScore(i){if(!i)return 0;let n=(i.atk||0)*1.7+(i.def||0)*2+(i.hp||0)*.16+(i.rarity==='mythic'?40:i.rarity==='relic'?25:0);if(i.affixType==='crit'||i.affixType==='dodge'||i.affixType==='leech')n+=(i.affixValue||0)*100*1.3;else n+=(i.affixValue||0);return n}
@@ -3678,7 +3753,7 @@ function showSummary(s){
 function setHunterTitle(t){if(profile.titles.includes(t)){profile.selectedTitle=t;persistProfile();renderProfile()}}window.toggleAutoPotionV131=toggleAutoPotionV131;window.craftHuntRecipeV131=craftHuntRecipeV131;window.toggleTrackedRecipeV131=toggleTrackedRecipeV131;window.toggleFavoriteV131=toggleFavoriteV131;window.toggleLockV131=toggleLockV131;window.summaryItemActionV131=summaryItemActionV131;window.renameLoadoutV131=renameLoadoutV131;window.equipRecovered=equipRecovered;window.salvageItem=salvageItem;window.claimFrontierQuestV10=claimFrontierQuestV10;window.foundCompany=foundCompany;window.claimCompanyWeekly=claimCompanyWeekly;window.setHunterTitle=setHunterTitle;window.craftMonsterSet=craftMonsterSet;window.ascendHunter=ascendHunter;window.chooseSpec=chooseSpec;window.saveLoadout=saveLoadout;window.loadLoadout=loadLoadout;window.copyBuildCode=copyBuildCode;function show(id){const e=$(id);if(!e)return;e.classList.add('show');e.setAttribute('aria-hidden','false')}function hide(id){const e=$(id);if(!e)return;e.classList.remove('show');e.setAttribute('aria-hidden','true')}
 function toast(t){const e=$('toast');e.textContent=t;e.classList.remove('show');void e.offsetWidth;e.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('show'),1900)}
 function leaveRoom(silent=false){
-  if(bc){send({type:'leave',peerId});bc.close()}bc=null;room=null;snapshot=null;v7ClassMotion.clear();clearHeldMovement();combatFloaters=[];combatFeed=[];worldFx=[];isHost=false;roomCode=null;$('roomChoice').style.display='block';$('roomPanel').style.display='none';$('roomBadge').textContent='No room';hide('lobbyOverlay');hide('campServiceOverlay');hide('trainingOverlay');hide('wagerOverlay');if(!silent)show('titleOverlay');renderAll()
+  if(bc){send({type:'leave',peerId});bc.close()}bc=null;stopRemoteTransportV141();room=null;snapshot=null;v7ClassMotion.clear();clearHeldMovement();combatFloaters=[];combatFeed=[];worldFx=[];isHost=false;roomCode=null;$('roomChoice').style.display='block';$('roomPanel').style.display='none';$('roomBadge').textContent='No room';hide('lobbyOverlay');hide('campServiceOverlay');hide('trainingOverlay');hide('wagerOverlay');if(!silent)show('titleOverlay');renderAll()
 }
 function prefillHashRoom(){
   const m=location.hash.match(/room=([A-Z0-9]+)/i);if(m){$('joinCode').value=m[1].toUpperCase();toast('Invite room code loaded')}
@@ -3697,7 +3772,8 @@ $('attackBtn').onclick=()=>submitAction({type:'attack',targetId:selectedTargetId
 $('extractBtn').onclick=()=>vote('extract');$('descendBtn').onclick=()=>vote('descend');
 $('meterDamageBtn').onclick=()=>{combatMeterMode='damage';renderCombatMeters(room||snapshot)};$('meterHealBtn').onclick=()=>{combatMeterMode='heal';renderCombatMeters(room||snapshot)};
 
-canvas.addEventListener('click',e=>{const r=room||snapshot,run=r?.run,rect=canvas.getBoundingClientRect(),sx=canvas.width/rect.width,sy=canvas.height/rect.height,x=Math.floor((e.clientX-rect.left)*sx/TILE),y=Math.floor((e.clientY-rect.top)*sy/TILE);if(!run){const o=activeCampObjects().find(o=>o.x===x&&o.y===y);if(o){const p=campPlayer(),dist=p?Math.abs(o.x-p.campX)+Math.abs(o.y-p.campY):99;if(dist<=2)interactCampObject(o);else toast(`Walk closer to ${o.name}`)}return}const enemy=enemyAtTile(run,x,y);if(enemy){selectedTargetId=enemy.id;selectedPartId=enemy.parts?.find(p=>partTargetable(enemy,p))?.id||null;const me=run.players?.[peerId],dist=me?distanceToEnemy(me,enemy):0;toast(`Target locked: ${enemy.name} • ${dist} tiles${selectedPartId?` • aiming ${enemy.parts.find(p=>p.id===selectedPartId)?.name}`:''}`);renderAll()}});
+function canvasTileFromPointerV141(e){const rect=canvas.getBoundingClientRect(),scale=Math.min(rect.width/canvas.width,rect.height/canvas.height),drawW=canvas.width*scale,drawH=canvas.height*scale,offsetX=(rect.width-drawW)/2,offsetY=(rect.height-drawH)/2,cx=e.clientX-rect.left-offsetX,cy=e.clientY-rect.top-offsetY;if(cx<0||cy<0||cx>=drawW||cy>=drawH)return null;return{x:Math.floor(cx/scale/TILE),y:Math.floor(cy/scale/TILE)}}
+canvas.addEventListener('click',e=>{const r=room||snapshot,run=r?.run,tile=canvasTileFromPointerV141(e);if(!tile)return;const{x,y}=tile;if(!run){if(worldStateV14()){const o=worldObjectsV141().map(q=>({...q,clickDist:Math.abs(q.x-x)+Math.abs(q.y-y)})).filter(q=>q.clickDist<=1).sort((a,b)=>a.clickDist-b.clickDist)[0];if(o){const p=campPlayer(),dist=p?Math.abs(o.x-(p.worldX??5))+Math.abs(o.y-(p.worldY??9)):99;if(dist<=1)interactWorldV14(o);else toast(`Walk closer to ${o.name}`)}return}const o=activeCampObjects().map(q=>({...q,clickDist:Math.abs(q.x-x)+Math.abs(q.y-y)})).filter(q=>q.clickDist<=1).sort((a,b)=>a.clickDist-b.clickDist)[0];if(o){const p=campPlayer(),dist=p?Math.abs(o.x-(p.campX??14))+Math.abs(o.y-(p.campY??15)):99;if(dist<=2)interactCampObject(o);else toast(`Walk closer to ${o.name}`)}return}const enemy=enemyAtTile(run,x,y);if(enemy){selectedTargetId=enemy.id;selectedPartId=enemy.parts?.find(p=>partTargetable(enemy,p))?.id||null;const me=run.players?.[peerId],dist=me?distanceToEnemy(me,enemy):0;toast(`Target locked: ${enemy.name} • ${dist} tiles${selectedPartId?` • aiming ${enemy.parts.find(p=>p.id===selectedPartId)?.name}`:''}`);renderAll()}});
 
 const MOVE_KEYS={arrowup:[0,-1],w:[0,-1],arrowdown:[0,1],s:[0,1],arrowleft:[-1,0],a:[-1,0],arrowright:[1,0],d:[1,0]};
 let heldCampMoveKeys=[],activeCampMoveKey=null,lastCampMoveAt=0;
