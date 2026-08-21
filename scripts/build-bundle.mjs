@@ -16,8 +16,8 @@ const [indexSource, cssSource, gameSource] = await Promise.all([
   readFile(join(projectRoot, "js", "game.js"), "utf8"),
 ]);
 
-const assetPattern = /assets\\/asset_[0-9]+_[a-f0-9]+\\.png/g;
-const assetPaths = [...new Set(`${cssSource}\\n${gameSource}`.match(assetPattern) ?? [])];
+const assetPattern = /assets\/asset_[0-9]+_[a-f0-9]+\.png/g;
+const assetPaths = [...new Set(`${cssSource}\n${gameSource}`.match(assetPattern) ?? [])];
 const embeddedAssets = new Map();
 
 await Promise.all(
@@ -33,17 +33,17 @@ const embedAssets = (source) =>
     source,
   );
 
-const bundledCss = embedAssets(cssSource).replaceAll("</style", "<\\\\/style");
-const bundledGame = embedAssets(gameSource).replaceAll("</script", "<\\\\/script");
+const bundledCss = embedAssets(cssSource).replaceAll("</style", "<\\/style");
+const bundledGame = embedAssets(gameSource).replaceAll("</script", "<\\/script");
 
 const bundledHtml = indexSource
   .replace(
     '<link rel="stylesheet" href="css/game.css">',
-    `<style>\\n${bundledCss}\\n</style>`,
+    `<style>\n${bundledCss}\n</style>`,
   )
   .replace(
     '<script src="js/game.js"></script>',
-    `<script>\\n${bundledGame}\\n</script>`,
+    `<script>\n${bundledGame}\n</script>`,
   );
 
 if (bundledHtml === indexSource) {
