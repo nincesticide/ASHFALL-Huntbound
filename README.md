@@ -17,3 +17,7 @@ Canonical split-source development package for ASHFALL.
 - `assets/` — extracted sprites/textures previously embedded as base64
 
 The source is intentionally only split at the asset/CSS/JS boundary for the first migration. Future refactors should split `game.js` subsystem-by-subsystem while keeping behavior and saves stable.
+
+## QA release bundle
+- `release/ASHFALL_Huntbound_Alpha_v0.14.0_Open_World.html` — self-contained browser build with CSS, JavaScript, and all 57 assets embedded
+- Rebuild it from the split source with `node scripts/build-bundle.mjs`
