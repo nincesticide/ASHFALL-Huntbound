@@ -176,6 +176,7 @@ async function activeSuccessor(db: MultiplayerEnv, room: RoomRow, now: number) {
 
 async function authorityPayload(db: MultiplayerEnv, room: RoomRow, now: number, includeSnapshot = false) {
   const leaseExpired = room.leaseExpiresAt <= now;
+  const recoveryRequired = leaseExpired && snapshotNeedsSameHost(room);
   return {
     protocolVersion: room.protocolVersion,
     roomSessionId: room.roomSessionId,
@@ -183,6 +184,7 @@ async function authorityPayload(db: MultiplayerEnv, room: RoomRow, now: number, 
     authorityEpoch: room.authorityEpoch,
     leaseExpiresAt: room.leaseExpiresAt,
     leaseExpired,
+    recoveryRequired,
     candidatePeerId: leaseExpired ? await activeSuccessor(db, room, now) : null,
     snapshotVersion: room.snapshotVersion,
     snapshotEventCursor: room.snapshotEventCursor,
@@ -448,11 +450,11 @@ async function handleClaim(request: Request, db: MultiplayerEnv, userId: string,
   return json({ ok: true, claimed: true, authority: refreshed ? await authorityPayload(db, refreshed, now, true) : null });
 }
 
-async function handleLeave(request: Request, db: MultiplayerEnv, userId: string, code: string, id: string, now: number) {
+async function handleLeave(request: Request, db: MultiplayerEnv, userId: string, code: string, id: string, now: number, activeFieldHint = false) {
   if (!await authorizeMember(request, db, userId, code, id)) return json({ error: "Room membership required" }, { status: 401 });
   const room = await readRoom(db, code);
   if (!room) return json({ ok: true, closed: true });
-  if (room.hostPeerId === id && snapshotNeedsSameHost(room)) {
+  if (room.hostPeerId === id && (snapshotNeedsSameHost(room) || activeFieldHint)) {
     await db.batch([
       db.prepare("DELETE FROM multiplayer_members WHERE room_session_id = ?").bind(room.roomSessionId),
       db.prepare("DELETE FROM multiplayer_events WHERE room_session_id = ?").bind(room.roomSessionId),
@@ -515,6 +517,9 @@ async function handleEvent(request: Request, db: MultiplayerEnv, userId: string,
   if (!checked.envelope || checked.error) return json({ error: checked.error }, { status: 400 });
   const envelope = checked.envelope;
   const isRoomHost = room.hostPeerId === id;
+  if (!isRoomHost && room.leaseExpiresAt <= now && snapshotNeedsSameHost(room)) {
+    return json({ error: "Active field state is frozen until the same host reconnects", recoveryRequired: true }, { status: 409 });
+  }
   if (["join", "profileSync", "reconnectV147"].includes(envelope.kind)) {
     const player = envelope.payload.player as Record<string, unknown>;
     if (player.characterId !== member.characterId) return json({ error: "Hunter identity changed during the room session" }, { status: 403 });
@@ -633,6 +638,6 @@ export async function handleMultiplayerRequest(request: Request, db: Multiplayer
   if (body.op === "event") return handleEvent(request, db, userId, body, now);
   if (body.op === "heartbeat") return handleHeartbeat(request, db, userId, code, id, now);
   if (body.op === "claim") return handleClaim(request, db, userId, code, id, now);
-  if (body.op === "leave") return handleLeave(request, db, userId, code, id, now);
+  if (body.op === "leave") return handleLeave(request, db, userId, code, id, now, body.activeField === true);
   return json({ error: "Unsupported multiplayer operation" }, { status: 400 });
 }

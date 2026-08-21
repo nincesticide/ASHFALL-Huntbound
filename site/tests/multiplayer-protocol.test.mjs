@@ -164,6 +164,20 @@ test("guest activity cannot renew or erase the host lease and active field state
   assert.equal((await event(database, "host@example.test", room, host, "snapshot", { type: "snapshot", stateVersion: 1, room: activeRoom })).response.status, 201);
 
   database.database.prepare("UPDATE multiplayer_rooms SET lease_expires_at = 0 WHERE room_code = ?").run(room);
+  const knownVersionPoll = await worker.fetch(new Request(`http://localhost/api/multiplayer?room=${room}&since=0&snapshot=1`, {
+    headers: requestHeaders("guest@example.test", guest),
+  }), environment(database), executionContext);
+  assert.equal(knownVersionPoll.status, 200);
+  const knownVersionPayload = await knownVersionPoll.json();
+  assert.equal(knownVersionPayload.authority.snapshot, undefined);
+  assert.equal(knownVersionPayload.authority.recoveryRequired, true);
+
+  const frozenCommand = await event(database, "guest@example.test", room, guest, "ready", {
+    type: "ready", peerId: PEERS.guest, ready: true,
+  });
+  assert.equal(frozenCommand.response.status, 409);
+  assert.equal(frozenCommand.data.recoveryRequired, true);
+
   const claim = await post(database, "guest@example.test", { op: "claim", room, peerId: PEERS.guest }, guest);
   assert.equal(claim.status, 409);
   assert.equal((await claim.json()).recoveryRequired, true);
@@ -173,6 +187,86 @@ test("guest activity cannot renew or erase the host lease and active field state
   const stored = database.database.prepare("SELECT host_peer_id, lease_expires_at FROM multiplayer_rooms WHERE room_code = ?").get(room);
   assert.equal(stored.host_peer_id, PEERS.host);
   assert.equal(stored.lease_expires_at, 0);
+});
+
+test("explicit active host leave closes the room and invalidates the guest session", async (t) => {
+  const database = await createSQLiteD1();
+  t.after(() => database.close());
+  const room = "KLM234";
+  const created = await open(database, "host@example.test", "create", room, PEERS.host, CHARACTERS.host);
+  const host = created.session;
+  const joined = await open(database, "guest@example.test", "join", room, PEERS.guest, CHARACTERS.guest, { inviteToken: created.data.inviteToken });
+  const guest = joined.session;
+  await event(database, "guest@example.test", room, guest, "join", {
+    type: "join", player: player(PEERS.guest, CHARACTERS.guest, "Guest"),
+  });
+  const activeRoom = {
+    code: room,
+    hostPeerId: PEERS.host,
+    players: {
+      [PEERS.host]: player(PEERS.host, CHARACTERS.host, "Host"),
+      [PEERS.guest]: player(PEERS.guest, CHARACTERS.guest, "Guest"),
+    },
+    run: { runId: "active-leave-fixture", phase: "player" },
+    worldV14: null,
+    stateVersionV146: 1,
+  };
+  assert.equal((await event(database, "host@example.test", room, host, "snapshot", {
+    type: "snapshot", stateVersion: 1, room: activeRoom,
+  })).response.status, 201);
+
+  const response = await post(database, "host@example.test", {
+    op: "leave", room, peerId: PEERS.host, activeField: true,
+  }, host);
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).closed, true);
+  assert.equal(database.database.prepare("SELECT COUNT(*) AS count FROM multiplayer_rooms WHERE room_code = ?").get(room).count, 0);
+  assert.equal(database.database.prepare("SELECT COUNT(*) AS count FROM multiplayer_members WHERE room_code = ?").get(room).count, 0);
+  assert.equal(database.database.prepare("SELECT COUNT(*) AS count FROM multiplayer_events WHERE room_code = ?").get(room).count, 0);
+
+  const guestPoll = await worker.fetch(new Request(`http://localhost/api/multiplayer?room=${room}&since=0`, {
+    headers: requestHeaders("guest@example.test", guest),
+  }), environment(database), executionContext);
+  assert.equal(guestPoll.status, 401);
+});
+
+test("active-field leave hint fail-closes a stale camp checkpoint", async (t) => {
+  const database = await createSQLiteD1();
+  t.after(() => database.close());
+  const room = "MNP345";
+  const created = await open(database, "host@example.test", "create", room, PEERS.host, CHARACTERS.host);
+  const host = created.session;
+  const joined = await open(database, "guest@example.test", "join", room, PEERS.guest, CHARACTERS.guest, { inviteToken: created.data.inviteToken });
+  const guest = joined.session;
+  await event(database, "guest@example.test", room, guest, "join", {
+    type: "join", player: player(PEERS.guest, CHARACTERS.guest, "Guest"),
+  });
+  const campRoom = {
+    code: room,
+    hostPeerId: PEERS.host,
+    players: {
+      [PEERS.host]: player(PEERS.host, CHARACTERS.host, "Host"),
+      [PEERS.guest]: player(PEERS.guest, CHARACTERS.guest, "Guest"),
+    },
+    run: null,
+    worldV14: null,
+    stateVersionV146: 1,
+  };
+  assert.equal((await event(database, "host@example.test", room, host, "snapshot", {
+    type: "snapshot", stateVersion: 1, room: campRoom,
+  })).response.status, 201);
+
+  const response = await post(database, "host@example.test", {
+    op: "leave", room, peerId: PEERS.host, activeField: true,
+  }, host);
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).closed, true);
+  assert.equal(database.database.prepare("SELECT COUNT(*) AS count FROM multiplayer_rooms WHERE room_code = ?").get(room).count, 0);
+
+  const guestPoll = await worker.fetch(new Request(`http://localhost/api/multiplayer?room=${room}&since=0`, {
+    headers: requestHeaders("guest@example.test", guest),
+  }), environment(database), executionContext);
+  assert.equal(guestPoll.status, 401);
 });
 
 test("explicit Emberwatch host leave transfers a membership-clean checkpoint", async (t) => {

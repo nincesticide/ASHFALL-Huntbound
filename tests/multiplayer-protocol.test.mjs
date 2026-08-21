@@ -122,6 +122,24 @@ function openExtractionAndCollectCompletionEvents(party, lootByPeer) {
   return { completionEvents, directSettlement, finalSnapshot };
 }
 
+test("an active host leave terminally clears the guest's stale field session", async () => {
+  const party = await createTwoPlayerParty("host-leave");
+  const { guest, hostPeerId } = party;
+  readyAndLaunch(party);
+  assert.ok(guest.readState().room?.run, "guest must begin in the active field");
+
+  guest.receiveEvent(transportEvent(hostPeerId, {
+    type: "leave",
+    peerId: hostPeerId,
+  }));
+
+  const closed = guest.readState();
+  assert.equal(closed.room, null);
+  assert.equal(closed.snapshot, null);
+  assert.equal(closed.roomCode, null);
+  assert.equal(closed.isHost, false);
+});
+
 test("host and guest ready, launch, extract, and settle exactly once across replay and reload", async () => {
   const party = await createTwoPlayerParty("settle");
   const {
