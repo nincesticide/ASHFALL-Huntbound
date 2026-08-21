@@ -1,0 +1,328 @@
+{
+  "schemaVersion": 1,
+  "frame": {
+    "width": 64,
+    "height": 64
+  },
+  "directions": [
+    "south",
+    "side",
+    "north"
+  ],
+  "mirrorSideForWest": true,
+  "animations": {
+    "idle": {
+      "frames": 6,
+      "fps": 5,
+      "loop": true
+    },
+    "walk": {
+      "frames": 6,
+      "fps": 10,
+      "loop": true
+    },
+    "attack": {
+      "frames": 6,
+      "fps": 12,
+      "loop": false,
+      "eventFrame": 4
+    },
+    "special": {
+      "frames": 6,
+      "fps": 10,
+      "loop": false,
+      "eventFrame": 4
+    },
+    "hit": {
+      "frames": 6,
+      "fps": 12,
+      "loop": false
+    },
+    "death": {
+      "frames": 6,
+      "fps": 8,
+      "loop": false
+    }
+  },
+  "enemies": {
+    "wolf": {
+      "name": "Road Wolf",
+      "rig": "quadruped",
+      "zone": "frontier",
+      "spriteId": "road_wolf",
+      "status": "pilot-ready",
+      "atlas": "assets/monsters/common/road_wolf/road_wolf.atlas.svg",
+      "metadata": "assets/monsters/common/road_wolf/road_wolf.sprite.json"
+    },
+    "emberboar": {
+      "name": "Emberback Boar",
+      "rig": "quadruped",
+      "zone": "frontier",
+      "spriteId": null,
+      "status": "planned",
+      "atlas": null,
+      "metadata": null
+    },
+    "thornling": {
+      "name": "Briar Thornling",
+      "rig": "brute",
+      "zone": "frontier",
+      "spriteId": null,
+      "status": "planned",
+      "atlas": null,
+      "metadata": null
+    },
+    "spider": {
+      "name": "Gloam Spider",
+      "rig": "arachnid",
+      "zone": "frontier",
+      "spriteId": "gloam_spider",
+      "status": "pilot-ready",
+      "atlas": "assets/monsters/common/gloam_spider/gloam_spider.atlas.svg",
+      "metadata": "assets/monsters/common/gloam_spider/gloam_spider.sprite.json"
+    },
+    "goblin": {
+      "name": "Ash Goblin",
+      "rig": "small_humanoid",
+      "zone": "frontier",
+      "spriteId": "ash_goblin",
+      "status": "pilot-ready",
+      "atlas": "assets/monsters/common/ash_goblin/ash_goblin.atlas.svg",
+      "metadata": "assets/monsters/common/ash_goblin/ash_goblin.sprite.json"
+    },
+    "gutterling": {
+      "name": "Gutter Bombardier",
+      "rig": "small_humanoid",
+      "zone": "hollow",
+      "spriteId": null,
+      "status": "planned",
+      "atlas": null,
+      "metadata": null
+    },
+    "bonearcher": {
+      "name": "Bone Archer",
+      "rig": "undead_humanoid",
+      "zone": "hollow",
+      "spriteId": null,
+      "status": "planned",
+      "atlas": null,
+      "metadata": null
+    },
+    "gravehusk": {
+      "name": "Grave Husk",
+      "rig": "brute",
+      "zone": "hollow",
+      "spriteId": null,
+      "status": "planned",
+      "atlas": null,
+      "metadata": null
+    },
+    "skeleton": {
+      "name": "Restless Dead",
+      "rig": "undead_humanoid",
+      "zone": "hollow",
+      "spriteId": null,
+      "status": "planned",
+      "atlas": null,
+      "metadata": null
+    },
+    "fenstalker": {
+      "name": "Fen Stalker",
+      "rig": "quadruped",
+      "zone": "gloam",
+      "spriteId": null,
+      "status": "planned",
+      "atlas": null,
+      "metadata": null
+    },
+    "sporeling": {
+      "name": "Sporeling",
+      "rig": "ooze",
+      "zone": "gloam",
+      "spriteId": null,
+      "status": "planned",
+      "atlas": null,
+      "metadata": null
+    },
+    "bogwitch": {
+      "name": "Bog Witch",
+      "rig": "caster",
+      "zone": "gloam",
+      "spriteId": null,
+      "status": "planned",
+      "atlas": null,
+      "metadata": null
+    },
+    "slime": {
+      "name": "Bog Slime",
+      "rig": "ooze",
+      "zone": "gloam",
+      "spriteId": null,
+      "status": "planned",
+      "atlas": null,
+      "metadata": null
+    },
+    "cultist": {
+      "name": "Cinder Cultist",
+      "rig": "caster",
+      "zone": "gloam",
+      "spriteId": null,
+      "status": "planned",
+      "atlas": null,
+      "metadata": null
+    },
+    "ashguard": {
+      "name": "Ashbound Guard",
+      "rig": "armored_humanoid",
+      "zone": "keep",
+      "spriteId": null,
+      "status": "planned",
+      "atlas": null,
+      "metadata": null
+    },
+    "cinderhound": {
+      "name": "Cinder Hound",
+      "rig": "quadruped",
+      "zone": "keep",
+      "spriteId": null,
+      "status": "planned",
+      "atlas": null,
+      "metadata": null
+    },
+    "banneret": {
+      "name": "Ashbound Banneret",
+      "rig": "armored_humanoid",
+      "zone": "keep",
+      "spriteId": null,
+      "status": "planned",
+      "atlas": null,
+      "metadata": null
+    },
+    "knight": {
+      "name": "Hollow Knight",
+      "rig": "armored_humanoid",
+      "zone": "keep",
+      "spriteId": null,
+      "status": "planned",
+      "atlas": null,
+      "metadata": null
+    },
+    "icecrawler": {
+      "name": "Ice Crawler",
+      "rig": "crawler",
+      "zone": "frost",
+      "spriteId": null,
+      "status": "planned",
+      "atlas": null,
+      "metadata": null
+    },
+    "frostseer": {
+      "name": "Frostseer",
+      "rig": "caster",
+      "zone": "frost",
+      "spriteId": null,
+      "status": "planned",
+      "atlas": null,
+      "metadata": null
+    },
+    "crystalbeast": {
+      "name": "Crystal Beast",
+      "rig": "brute",
+      "zone": "frost",
+      "spriteId": null,
+      "status": "planned",
+      "atlas": null,
+      "metadata": null
+    },
+    "golem": {
+      "name": "Runestone Golem",
+      "rig": "golem",
+      "zone": "frost",
+      "spriteId": null,
+      "status": "planned",
+      "atlas": null,
+      "metadata": null
+    },
+    "drake": {
+      "name": "Pale Drake",
+      "rig": "drake",
+      "zone": "frost",
+      "spriteId": null,
+      "status": "planned",
+      "atlas": null,
+      "metadata": null
+    },
+    "voidling": {
+      "name": "Voidling",
+      "rig": "floating_aberration",
+      "zone": "rift",
+      "spriteId": null,
+      "status": "planned",
+      "atlas": null,
+      "metadata": null
+    },
+    "chorister": {
+      "name": "Rift Chorister",
+      "rig": "caster",
+      "zone": "rift",
+      "spriteId": null,
+      "status": "planned",
+      "atlas": null,
+      "metadata": null
+    },
+    "riftreaver": {
+      "name": "Rift Reaver",
+      "rig": "armored_humanoid",
+      "zone": "rift",
+      "spriteId": null,
+      "status": "planned",
+      "atlas": null,
+      "metadata": null
+    },
+    "wraith": {
+      "name": "Bell Wraith",
+      "rig": "spectral",
+      "zone": "rift",
+      "spriteId": "bell_wraith",
+      "status": "pilot-ready",
+      "atlas": "assets/monsters/common/bell_wraith/bell_wraith.atlas.svg",
+      "metadata": "assets/monsters/common/bell_wraith/bell_wraith.sprite.json"
+    },
+    "mawspawn": {
+      "name": "Maw Spawn",
+      "rig": "crawler",
+      "zone": "worldeater",
+      "spriteId": null,
+      "status": "planned",
+      "atlas": null,
+      "metadata": null
+    },
+    "riftmauler": {
+      "name": "Rift Mauler",
+      "rig": "brute",
+      "zone": "worldeater",
+      "spriteId": null,
+      "status": "planned",
+      "atlas": null,
+      "metadata": null
+    },
+    "abyssseer": {
+      "name": "Abyss Seer",
+      "rig": "caster",
+      "zone": "worldeater",
+      "spriteId": null,
+      "status": "planned",
+      "atlas": null,
+      "metadata": null
+    },
+    "worldeater": {
+      "name": "World Eater Spawn",
+      "rig": "floating_aberration",
+      "zone": "worldeater",
+      "spriteId": null,
+      "status": "planned",
+      "atlas": null,
+      "metadata": null
+    }
+  }
+}
