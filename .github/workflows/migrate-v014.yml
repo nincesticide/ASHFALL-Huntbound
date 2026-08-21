@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - codex/v014-source-migration
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
