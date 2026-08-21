@@ -1,0 +1,54 @@
+name: Expand ASHFALL v0.14 source
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'ASHFALL_v0.14.0_Open_World_Source.zip'
+      - '.github/workflows/extract-v014-source.yml'
+      - 'migration/trigger-v014.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  expand-source:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Expand canonical source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/ashfall-source
+          mkdir -p /tmp/ashfall-source
+          unzip -q ASHFALL_v0.14.0_Open_World_Source.zip -d /tmp/ashfall-source
+          SOURCE_DIR="$(find /tmp/ashfall-source -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+          test -n "$SOURCE_DIR"
+          cp -a "$SOURCE_DIR"/. ./
+
+      - name: Verify expected source files
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f index.html
+          test -f css/game.css
+          test -f js/game.js
+          test -d assets
+          test "$(find assets -type f | wc -l)" -ge 50
+
+      - name: Commit expanded source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html css js assets README.md HANDOFF.md migration_manifest.json
+          if git diff --cached --quiet; then
+            echo "No source changes to commit."
+          else
+            git commit -m "Expand canonical ASHFALL v0.14.0 source tree"
+            git push
+          fi
