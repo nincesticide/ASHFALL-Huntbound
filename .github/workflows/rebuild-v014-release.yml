@@ -5,7 +5,7 @@ on:
     paths:
       - index.html
       - css/game.css
-      - js/game.js
+      - js/**
       - assets/**
       - site/**
       - release/ASHFALL_Huntbound_Alpha_v0.14.0_Open_World.html
@@ -21,7 +21,7 @@ on:
     paths:
       - index.html
       - css/game.css
-      - js/game.js
+      - js/**
       - assets/**
       - site/**
       - release/ASHFALL_Huntbound_Alpha_v0.14.0_Open_World.html

@@ -10,11 +10,15 @@ This document describes what the v0.14.0 client actually does. It is not a repla
 | --- | --- |
 | `index.html` | Static game shell, fixed `960×608` canvas, HUD, overlays, lobby, profile, service, training, wager, summary, and action controls. |
 | `css/game.css` | Entire visual system, viewport layout, overlays, canvas scaling, HUD modes, responsive rules, sprite/UI polish, and accessibility-visible states. |
-| `js/game.js` | One strict-mode IIFE containing content definitions, storage, transport, room state, world state, simulation, progression, settlement, rendering, audio, and input. At audit: 3,852 lines, 496,337 bytes, and 563 top-level function declarations. |
+| `js/save-system.js` | Dependency-free pure validation/normalization plus the browser storage adapter for canonical roster reads/writes, export/import planning, automatic recovery, and corrupt-byte quarantine. |
+| `js/world-contracts.js` | Dependency-free Emberwatch/Emberwood spawn, reset, adjacency, and exact-object route contracts consumed by the game and executable tests. |
+| `js/game.js` | The remaining strict-mode IIFE containing content definitions, transport, room/world state, simulation, progression, settlement, rendering, audio, input, and the UI wrappers around the extracted save/route seams. |
 | `assets/` | 57 canonical PNGs: camp art, textures, bosses, six-class animation sheets, and defeat/down visuals. Source references and file names are guarded by tests. |
 | `scripts/build-bundle.mjs` | Dependency-free bundler that embeds CSS, JavaScript, and all referenced assets into the QA/release HTML; `--check` verifies exact parity without rewriting. |
 | `release/ASHFALL_Huntbound_Alpha_v0.14.0_Open_World.html` | Self-contained QA/release artifact generated from split source. It is not development source. |
 | `tests/source-invariants.test.mjs` | Static compatibility guards for split boot, 57 assets, profile save key, ten equipment slots, bonfire returns, and exact-tile surface attacks. |
+| `tests/save-compatibility.test.mjs`, `tests/save-import.test.mjs` | Current/legacy/all-class fixtures plus pure migration, unknown-field, import-conflict, storage-failure, stale-preview, and recovery coverage. |
+| `tests/golden-route.test.mjs` | Executes the production support modules and instrumented in-memory game source through critical Emberwatch/Emberwood routes without shipping a test API. |
 | `tests/release-bundle.test.mjs` | Byte-for-byte bundle parity guard. |
 | `site/` | Versioned private ChatGPT Site shell, worker entry, D1 relay/schema/migration, locked dependency build, and presentation assets. The game payload is generated, not edited here. |
 | `scripts/materialize-site.mjs` | Dependency-free promotion boundary that combines `site/` with the canonical root game in an explicitly chosen safe destination. |
@@ -89,7 +93,7 @@ The physical D1 resource, private access policy, immutable versions, and deploym
 
 **Observed code**
 
-- Storage boundary: `PROFILE_KEY`, `loadProfiles`, `saveProfiles`, and `persistProfile` (lines 612 and 1,551–1,555).
+- Storage boundary: `AshfallSaveSystem` in `js/save-system.js`, with `loadProfiles`, `saveProfiles`, and `persistProfile` as game/UI wrappers.
 - Construction and compatibility defaults: `newProfile`, `ensureProfileShape`, `ensureArmoryShapeV132`, and `normalizeItemV132`.
 - XP/mastery/talents/Ascent/Ascension: `xpNext`, `masteryLevel`, `buyTalent`, `buyAscentNodeV11`, `ascendHunter`.
 - Titles, records, Nemeses, Codex mastery, Delve discovery, contracts, and world progression are fields on the same profile object.
@@ -97,7 +101,7 @@ The physical D1 resource, private access policy, immutable versions, and deploym
 
 **Authority:** the local browser owns and can mutate its profile. In multiplayer the host receives a derived join payload, not the complete profile, and trusts it.
 
-**Proposed seam:** extract a pure profile normalizer/migrator first, then a storage adapter with `loadAll`, `saveOne`, `export`, and `import`. Retain `ashfall_mp_alpha_profiles_v1` as the compatibility key during the first extraction and preserve unknown fields.
+**Implemented seam:** the pure `normalizeProfileV014`/`normalizeCollectionV014` path and guarded storage/export/import/recovery adapter retain `ashfall_mp_alpha_profiles_v1`, preserve unknown fields, and are fixture-tested. A future server-owned character repository remains an online-gated replacement, not part of this local extraction.
 
 ### 5. Items, armory, crafting, and economy
 

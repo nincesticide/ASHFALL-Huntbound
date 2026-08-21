@@ -23,12 +23,16 @@ The observed v0.14 implementation is recorded in [docs/SYSTEM_INVENTORY.md](docs
 - Emberwatch ↔ Emberwood transitions use validated gate/bonfire spawn points; same-map surface combat victories preserve each surviving hunter's position.
 - Surface resources, encounters, and Delve entrances are host-browser-authoritative in the current untrusted multiplayer prototype.
 - All six classes render distinct prone downed/fallen states derived from their canonical class sprite atlases.
+- Local hunter saves now support versioned JSON export, validated preview, non-destructive merge import, automatic pre-change recovery snapshots, and corrupt-byte quarantine without changing the canonical storage key.
+- Dependency-free fixtures exercise current v0.14 data, legacy three-slot armory migration, all six classes, unknown-field retention, storage failures, and recovery; executable route tests run the production game through North Gate, animal combat, resource collection, wipe/bonfire return, and Emberroot Cellar entry.
 - The ChatGPT Site deployment adds an HTTP multiplayer relay for different browsers/devices; this split-source package retains the same-browser `BroadcastChannel` fast path and gracefully falls back when that relay endpoint is unavailable.
 
 ## Source layout
 
 - `index.html` — shell and UI markup
 - `css/game.css` — game UI and presentation
+- `js/save-system.js` — pure local save validation, v0.14 compatibility normalization, export/import, and recovery
+- `js/world-contracts.js` — pure Emberwatch/Emberwood spawn and exact-interaction route contracts
 - `js/game.js` — current gameplay source
 - `assets/` — extracted sprites/textures previously embedded as base64
 - `site/` — versioned private Site shell, worker, relay, migration, and locked build; `public/game` is generated from root source
@@ -43,7 +47,7 @@ Run `node scripts/build-bundle.mjs` to regenerate the self-contained browser bui
 `release/ASHFALL_Huntbound_Alpha_v0.14.0_Open_World.html`. The bundle is generated
 directly from the split source and embeds all 57 canonical assets.
 
-Run `npm test` to check syntax, the stable save key and ten-slot definitions, critical world-return and interaction source wiring, v0.14 asset integrity, and release parity. These are regression invariants, not functional save-migration or browser-play tests. Run `npm run build` after changing split source or assets.
+Run `npm test` to check syntax, the stable save key and ten-slot definitions, current/legacy save compatibility, failure-safe import/recovery, executable golden-route behavior, critical source wiring, v0.14 asset integrity, release parity, and Site materialization. Run `npm run build` after changing split source or assets.
 
 The exact-57 asset invariant intentionally freezes the canonical v0.14 manifest. A later milestone that adds art must update the manifest expectation and content version deliberately; it must not weaken the existing-file checks silently.
 

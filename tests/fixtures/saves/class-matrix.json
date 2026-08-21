@@ -1,0 +1,8 @@
+{
+  "fixture-warden": { "id": "fixture-warden", "name": "Warden", "classId": "warden" },
+  "fixture-berserker": { "id": "fixture-berserker", "name": "Berserker", "classId": "berserker" },
+  "fixture-ranger": { "id": "fixture-ranger", "name": "Ranger", "classId": "ranger" },
+  "fixture-arcanist": { "id": "fixture-arcanist", "name": "Arcanist", "classId": "arcanist" },
+  "fixture-templar": { "id": "fixture-templar", "name": "Templar", "classId": "templar" },
+  "fixture-shadow": { "id": "fixture-shadow", "name": "Shadow", "classId": "shadow" }
+}

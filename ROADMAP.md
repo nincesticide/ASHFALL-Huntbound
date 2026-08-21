@@ -346,7 +346,7 @@ Keep these working, but do not add substantial content until the vertical slice 
 
 1. Freeze the canonical v0.14 source/release relationship and critical compatibility wiring with dependency-free invariants. **Completed for this foundation checkpoint; runtime fixtures follow.**
 2. Inventory the v0.14 gameplay monolith by subsystem and document current persistence schemas, including the now-versioned private Site relay/deployment boundary. **Completed for this foundation checkpoint; extraction follows.**
-3. Build save fixtures and golden-path runtime coverage for the critical vertical-slice transitions.
+3. Build save fixtures and golden-path runtime coverage for the critical vertical-slice transitions. **First checkpoint completed: current/legacy/recovery saves plus North Gate, exact surface interaction, resource, wipe/bonfire, and Emberroot Cellar routes; extraction settlement, crafting, reload, and host/guest cases remain.**
 4. Introduce seeded authoritative randomness and deterministic replay for one complete hunt.
 5. Extract simulation, content, rendering, UI, persistence, and networking behind stable interfaces.
 6. Begin v0.15 with Emberwood sectors, roaming creature behavior, and the authored Direfang journey.

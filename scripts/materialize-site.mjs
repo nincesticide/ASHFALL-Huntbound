@@ -228,6 +228,14 @@ export async function materializeSite(options, additionalOptions = {}) {
   await Promise.all([
     copyFile(join(projectRoot, "index.html"), join(gameDestination, "index.html")),
     copyFile(join(projectRoot, "css", "game.css"), join(gameDestination, "css", "game.css")),
+    copyFile(
+      join(projectRoot, "js", "save-system.js"),
+      join(gameDestination, "js", "save-system.js"),
+    ),
+    copyFile(
+      join(projectRoot, "js", "world-contracts.js"),
+      join(gameDestination, "js", "world-contracts.js"),
+    ),
     copyFile(join(projectRoot, "js", "game.js"), join(gameDestination, "js", "game.js")),
   ]);
 

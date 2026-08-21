@@ -7,9 +7,11 @@ import test from "node:test";
 const testsDirectory = dirname(fileURLToPath(import.meta.url));
 const projectRoot = resolve(testsDirectory, "..");
 
-const [indexSource, cssSource, gameSource] = await Promise.all([
+const [indexSource, cssSource, saveSystemSource, worldContractsSource, gameSource] = await Promise.all([
   readFile(join(projectRoot, "index.html"), "utf8"),
   readFile(join(projectRoot, "css", "game.css"), "utf8"),
+  readFile(join(projectRoot, "js", "save-system.js"), "utf8"),
+  readFile(join(projectRoot, "js", "world-contracts.js"), "utf8"),
   readFile(join(projectRoot, "js", "game.js"), "utf8"),
 ]);
 
@@ -26,15 +28,34 @@ test("index.html boots the split development source", () => {
     indexSource.match(/<link rel="stylesheet" href="css\/game\.css">/g)?.length,
     1,
   );
+  assert.equal(
+    indexSource.match(/<script src="js\/save-system\.js"><\/script>/g)?.length,
+    1,
+  );
+  assert.equal(
+    indexSource.match(/<script src="js\/world-contracts\.js"><\/script>/g)?.length,
+    1,
+  );
   assert.equal(indexSource.match(/<script src="js\/game\.js"><\/script>/g)?.length, 1);
   assert.ok(cssSource.length > 0, "css/game.css must not be empty");
+  assert.ok(saveSystemSource.length > 0, "js/save-system.js must not be empty");
+  assert.ok(worldContractsSource.length > 0, "js/world-contracts.js must not be empty");
   assert.ok(gameSource.length > 0, "js/game.js must not be empty");
+  assert.ok(
+    indexSource.indexOf("js/save-system.js") < indexSource.indexOf("js/game.js") &&
+      indexSource.indexOf("js/world-contracts.js") < indexSource.indexOf("js/game.js"),
+    "support modules must load before the game",
+  );
 });
 
 test("all 57 canonical PNG assets exist and are referenced", async () => {
   const assetReferencePattern = /assets\/asset_[0-9]+_[a-f0-9]+\.png/g;
   const references = [
-    ...new Set(`${indexSource}\n${cssSource}\n${gameSource}`.match(assetReferencePattern) ?? []),
+    ...new Set(
+      `${indexSource}\n${cssSource}\n${saveSystemSource}\n${worldContractsSource}\n${gameSource}`.match(
+        assetReferencePattern,
+      ) ?? [],
+    ),
   ].sort();
   const assetFiles = (await readdir(join(projectRoot, "assets")))
     .filter((file) => /^asset_[0-9]+_[a-f0-9]+\.png$/.test(file))
@@ -56,14 +77,24 @@ test("all 57 canonical PNG assets exist and are referenced", async () => {
 });
 
 test("localStorage character saves retain the canonical profile key", () => {
-  assert.match(gameSource, /const PROFILE_KEY='ashfall_mp_alpha_profiles_v1';/);
-  assert.match(gameSource, /localStorage\.getItem\(PROFILE_KEY\)/);
-  assert.match(gameSource, /localStorage\.setItem\(PROFILE_KEY,JSON\.stringify\(p\)\)/);
+  assert.match(saveSystemSource, /const PROFILE_KEY = 'ashfall_mp_alpha_profiles_v1';/);
+  assert.match(gameSource, /const PROFILE_KEY=SAVE_SYSTEM\.PROFILE_KEY/);
+  assert.match(saveSystemSource, /storage\.getItem\(PROFILE_KEY\)/);
+  assert.match(saveSystemSource, /storage\.setItem\(PROFILE_KEY, serialized\)/);
   assert.deepEqual(
-    [...gameSource.matchAll(/ashfall_[a-z0-9_]*profiles[a-z0-9_]*/g)].map((match) => match[0]),
+    [...`${saveSystemSource}\n${gameSource}`.matchAll(/ashfall_[a-z0-9_]*profiles[a-z0-9_]*/g)].map(
+      (match) => match[0],
+    ),
     ["ashfall_mp_alpha_profiles_v1"],
     "introducing another profile key requires an explicit save migration",
   );
+  assert.match(saveSystemSource, /const RECOVERY_KEY = 'ashfall_save_recovery_v1';/);
+  assert.match(saveSystemSource, /const QUARANTINE_KEY = 'ashfall_corrupt_quarantine_v1';/);
+  assert.match(gameSource, /SAVE_SYSTEM\.readProfiles\(localStorage\)/);
+  assert.match(gameSource, /SAVE_SYSTEM\.importProfiles\(localStorage/);
+  assert.match(indexSource, /id="saveExportV144"/);
+  assert.match(indexSource, /id="saveImportV144"/);
+  assert.match(indexSource, /id="saveRestoreV144"/);
 });
 
 test("the armory retains all ten canonical equipment slots and labels", () => {
@@ -104,14 +135,16 @@ test("the armory retains all ten canonical equipment slots and labels", () => {
 
 test("death, summary, gate, and multiplayer returns converge on the Emberwatch bonfire", () => {
   assert.match(
-    gameSource,
-    /const EMBERWATCH_RETURN_SPAWNS_V142=\[\[14,12\],\[16,12\],\[14,11\],\[16,11\]\];/,
+    worldContractsSource,
+    /\[14, 12\][\s\S]*\[16, 12\][\s\S]*\[14, 11\][\s\S]*\[16, 11\]/,
   );
+  assert.match(gameSource, /EMBERWATCH_RETURN_SPAWNS_V142=WORLD_CONTRACTS\.EMBERWATCH_RETURN_SPAWNS/);
 
   const resetFlow = sourceBetween("function resetToEmberwatchV142", "function returnPartyToEmberwatchV142");
-  assert.match(resetFlow, /room\.worldV14=null/);
-  assert.match(resetFlow, /room\.worldSelectionV141=null/);
-  assert.match(resetFlow, /stagePartyAtBonfireV142\(\)/);
+  assert.match(resetFlow, /WORLD_CONTRACTS\.resetRoomToEmberwatch\(room\)/);
+  assert.match(worldContractsSource, /room\.worldV14 = null/);
+  assert.match(worldContractsSource, /room\.worldSelectionV141 = null/);
+  assert.match(worldContractsSource, /stagePartyAtBonfire\(room\.players\)/);
 
   const summaryFlow = sourceBetween("function returnToCampFromSummaryV142", "function enterWorldV14");
   assert.match(summaryFlow, /returnPartyToEmberwatchV142\(/);
@@ -135,7 +168,8 @@ test("surface encounter clicks target the exact tile and preserve the auto-attac
     "canvas.addEventListener('click'",
     "const MOVE_KEYS=",
   );
-  assert.match(clickFlow, /worldObjectsV141\(\)\.find\(q=>q\.x===x&&q\.y===y\)/);
+  assert.match(clickFlow, /WORLD_CONTRACTS\.exactObjectAtTile\(worldObjectsV141\(\),x,y\)/);
+  assert.match(worldContractsSource, /object\.x === x && object\.y === y/);
   assert.match(clickFlow, /interactWorldV14\(o,\{autoAttack:o\.objType==='encounter'\}\)/);
   assert.doesNotMatch(
     clickFlow,

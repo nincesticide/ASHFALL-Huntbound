@@ -39,6 +39,9 @@ Completed foundation checkpoint — 2026-08-21:
 - Added a dependency-free, guarded materializer and byte-parity coverage for the split game and all 57 assets.
 - Reduced idle relay polling, removed client room deletion, stopped per-request schema DDL, limited cleanup frequency, and moved new rooms to six-character codes.
 - Recorded the observed subsystem and persistence/runtime schemas in `docs/SYSTEM_INVENTORY.md` and `docs/PERSISTENCE_SCHEMAS.md`.
+- Added current, all-class, legacy, corrupt, unknown-field, quota-failure, stale-preview, and recovery save coverage; the canonical localStorage key remains unchanged.
+- Added player-controlled local JSON export, validated preview, add-only/conflict-copy import, automatic recovery snapshots, and corrupt-byte quarantine without a paid service.
+- Added executable production-route coverage for North Gate entry, exact animal combat without teleporting, single-claim resources, surface wipe to bonfire, and Emberroot Cellar selection.
 - Preserved the owner-only Site policy and zero-additional-cost constraint.
 
 ## World

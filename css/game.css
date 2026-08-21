@@ -537,3 +537,13 @@ body.mode-run-v141 .camp-quickbar-v131{display:none!important}
   html,body{overflow:hidden!important}.shell{height:100dvh!important;min-height:0!important;overflow:hidden!important}.layout{display:block!important;overflow:hidden!important}.stage{height:100%!important;aspect-ratio:auto!important}.side{display:block!important;max-height:none!important;overflow:hidden!important}
   .header .version{display:none}.hud{max-width:62%}.phase{display:none}.world-region-banner-v14{top:52px}.hud-controls-v141{top:53px}
 }
+
+/* ===== v0.14.4 LOCAL SAVE RECOVERY ===== */
+.save-recovery-v144{margin-top:8px;border:1px solid #34485f;border-radius:7px;background:rgba(9,15,23,.72);padding:0 8px}
+.save-recovery-v144 summary{cursor:pointer;padding:7px 0;color:#d7c37e;font-size:8px;font-weight:800;letter-spacing:.7px;text-transform:uppercase}
+.save-transfer-actions-v144{gap:5px;padding:0 0 7px;flex-wrap:wrap}
+.save-transfer-actions-v144 button{padding:5px 7px;font-size:7px}
+.save-transfer-status-v144{border-top:1px solid rgba(59,78,102,.65);padding:6px 0 7px;line-height:1.45;color:#9eafc2}
+.save-transfer-status-v144.warn{color:#efca76}.save-transfer-status-v144.bad{color:#ef8f8f}
+.save-import-commit-v144{gap:5px;padding:0 0 7px}.save-import-commit-v144 button{padding:5px 8px;font-size:7px}
+@media(max-width:720px){.save-transfer-actions-v144 button{flex:1 1 120px}}

@@ -1,6 +1,6 @@
 # ASHFALL v0.14 Persistence and Runtime Schemas
 
-Status: **observed, informal schemas**, audited against the canonical `js/game.js` during the v0.14.x foundation checkpoint.
+Status: **observed, informal schemas plus the implemented local backup contract**, audited against the canonical split source during the v0.14.x foundation checkpoint.
 
 The current code uses JavaScript objects, not a formal schema library. The pseudo-TypeScript below records fields actually constructed, defaulted, read, or written by v0.14. Optional markers mean a field may be absent in an older save, a newly constructed object, or a particular item/run variant. It does not mean the field is safe to discard.
 
@@ -11,18 +11,38 @@ Sections labeled **Proposed future schema** are roadmap guidance only and are no
 | Storage | Literal key | Observed value | Owner/source anchors |
 | --- | --- | --- | --- |
 | `localStorage` | `ashfall_mp_alpha_profiles_v1` | JSON object keyed by profile UUID | `PROFILE_KEY`, `loadProfiles`, `saveProfiles`, `persistProfile`, `newProfile`, `ensureProfileShape` |
+| `localStorage` | `ashfall_save_recovery_v1` | One versioned snapshot containing the exact pre-migration/import roster text | `RECOVERY_KEY`, `writeRecoverySnapshot`, `readRecovery` in `js/save-system.js` |
+| `localStorage` | `ashfall_corrupt_quarantine_v1` | Exact unreadable roster text preserved before an explicit recovery restore | `QUARANTINE_KEY`, `restoreRecovery` in `js/save-system.js` |
 | `localStorage` | `ashfall_party_records_v1` | JSON object keyed by sorted party names joined with `|` | `PARTY_RECORD_KEY`, `loadPartyRecords`, `updatePartyRecord` |
 | `sessionStorage` | `ashfall_mp_peer_id` | String UUID/random ID for this tab session | `SESSION_PEER`, `peerId` initialization |
 
-No other `localStorage` or `sessionStorage` key is read or written by the split source. No IndexedDB database, cookie, Cache Storage record, filesystem save, or server-owned character record exists in this repository.
+No IndexedDB database, cookie, Cache Storage record, filesystem save, or server-owned character record exists in this repository. Hunter backup/import/recovery is entirely local and requires no paid service.
 
 Storage behavior that matters:
 
-- `loadProfiles` and `loadPartyRecords` parse the whole value and return `{}` on any parse exception. They do not preserve the corrupt raw bytes or report recovery UI.
-- `persistProfile` reads the whole profile map, replaces `profiles[profile.id]`, writes the whole map, refreshes the saved-character UI, and schedules room profile synchronization.
-- There is no save envelope, schema version, revision, checksum, backup slot, export/import flow, `createdAt`, or `updatedAt`.
-- `ensureProfileShape` mutates the loaded object in place and `selectProfile` immediately persists it. This is the current implicit migration mechanism.
+- `AshfallSaveSystem.readProfiles` validates the whole canonical roster and returns structured success/error state plus the original raw text. Malformed or unsafe data blocks character creation, persistence, and normal import instead of becoming an empty roster.
+- `persistProfile` still stores the canonical bare profile map under the unchanged v1 key, but writes now catch browser/quota failures and reject stale or corrupt bases.
+- Export files use the versioned `ashfall-huntbound-save` envelope (`formatVersion: 1`, `gameVersion`, `exportedAt`, `profileKey`, and `profiles`). The live canonical storage representation is not enveloped or renamed.
+- Import is previewed and merge-only by default. Unrelated local hunters survive; byte-identical IDs are skipped; differing records with the same ID are retained as separate `(Recovered)` hunters with new IDs.
+- Before implicit profile migration or any import/valid recovery merge, the exact current roster text is written to `ashfall_save_recovery_v1`. If that snapshot cannot be written, the live roster is not changed.
+- If the live roster is malformed, export downloads its raw bytes. An explicit restore of a valid automatic snapshot first preserves the malformed bytes under `ashfall_corrupt_quarantine_v1`.
+- `ensureProfileShape` remains the in-game mutating compatibility wrapper, but it delegates to the pure, idempotent `normalizeProfileV014` path covered by current, legacy, unknown-field, and all-class fixtures.
 - Party records are updated only in host-side `settleRun`; they are local records, not shared or authoritative leaderboards.
+
+### Local export envelope v1
+
+```ts
+type AshfallLocalExportV1 = {
+  format: "ashfall-huntbound-save";
+  formatVersion: 1;
+  gameVersion: "0.14.0";
+  exportedAt: string; // ISO timestamp
+  profileKey: "ashfall_mp_alpha_profiles_v1";
+  profiles: StoredProfilesV1;
+};
+```
+
+The import limit is 4 MB and 100 hunters. Files with future format versions, unsupported classes, mismatched IDs, unsafe object keys/IDs, markup-bearing values, invalid roots, or excessive complexity are rejected before storage is touched.
 
 ## Observed private relay persistence
 

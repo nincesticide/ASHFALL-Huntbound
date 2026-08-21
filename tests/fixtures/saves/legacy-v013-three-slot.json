@@ -1,0 +1,25 @@
+{
+  "fixture-legacy-ranger": {
+    "id": "fixture-legacy-ranger",
+    "name": "Old Trail",
+    "classId": "ranger",
+    "level": 8,
+    "equipment": {
+      "weapon": { "id": "legacy-weapon", "type": "weapon", "name": "Ashwood Bow", "ilvl": 7 },
+      "armor": { "id": "legacy-armor", "type": "armor", "name": "Hunter Leathers", "ilvl": 6 },
+      "charm": { "id": "legacy-charm", "type": "charm", "name": "Wolf Fang", "ilvl": 5 }
+    },
+    "inventory": [
+      { "id": "legacy-inventory-armor", "type": "armor", "name": "Spare Leather", "ilvl": 4 },
+      { "id": "legacy-ring", "type": "ring1", "name": "Trail Ring", "ilvl": 5 }
+    ],
+    "loadouts": {
+      "old": {
+        "weapon": "legacy-weapon",
+        "armor": "legacy-armor",
+        "charm": "legacy-charm"
+      }
+    },
+    "lifetime": { "runs": 3, "success": 2, "wipes": 1 }
+  }
+}

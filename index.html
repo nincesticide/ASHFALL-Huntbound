@@ -69,6 +69,20 @@
           <div class="section">
             <div class="sectiontitle">Saved characters</div>
             <div id="savedCharacters" class="grid2"></div>
+            <details class="save-recovery-v144" id="saveRecoveryV144">
+              <summary>Local backup &amp; recovery</summary>
+              <div class="row save-transfer-actions-v144">
+                <button type="button" id="saveExportV144">Export Hunters</button>
+                <button type="button" id="saveImportV144">Preview Import</button>
+                <button type="button" id="saveRestoreV144">Restore Last Snapshot</button>
+              </div>
+              <input type="file" id="saveImportInputV144" accept="application/json,.json" hidden>
+              <div class="tiny save-transfer-status-v144" id="saveTransferStatusV144" role="status" aria-live="polite">Local saves stay in this browser.</div>
+              <div class="row save-import-commit-v144" id="saveImportCommitV144" hidden>
+                <button type="button" id="saveImportApplyV144">Apply Import</button>
+                <button type="button" id="saveImportCancelV144">Cancel</button>
+              </div>
+            </details>
           </div>
 
           <div class="section" id="characterCreateSection">
@@ -328,6 +342,8 @@
   </div>
 </div>
 
+<script src="js/save-system.js"></script>
+<script src="js/world-contracts.js"></script>
 <script src="js/game.js"></script>
 </body>
 </html>

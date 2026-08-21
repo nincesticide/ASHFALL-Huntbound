@@ -49,6 +49,8 @@ test("materializes the versioned Site runtime around the canonical v0.14 game", 
     const gameFiles = [
       ["index.html"],
       ["css", "game.css"],
+      ["js", "save-system.js"],
+      ["js", "world-contracts.js"],
       ["js", "game.js"],
     ];
     await Promise.all(

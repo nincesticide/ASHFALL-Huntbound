@@ -8,10 +8,12 @@
     "build": "node scripts/build-bundle.mjs",
     "build:check": "node scripts/build-bundle.mjs --check",
     "site:materialize": "node scripts/materialize-site.mjs",
-    "test:source": "node --check js/game.js && node --test tests/source-invariants.test.mjs",
+    "test:source": "node --check js/save-system.js && node --check js/world-contracts.js && node --check js/game.js && node --test tests/source-invariants.test.mjs",
+    "test:saves": "node --test tests/save-compatibility.test.mjs tests/save-import.test.mjs",
+    "test:routes": "node --test tests/golden-route.test.mjs",
     "test:release": "node --test tests/release-bundle.test.mjs",
     "test:site": "node --test tests/site-runtime.test.mjs",
-    "test": "npm run test:source && npm run test:release && npm run test:site"
+    "test": "npm run test:source && npm run test:saves && npm run test:routes && npm run test:release && npm run test:site"
   },
   "engines": {
     "node": ">=20"

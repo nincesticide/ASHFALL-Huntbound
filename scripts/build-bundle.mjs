@@ -11,14 +11,22 @@ const outputPath = join(
 );
 
 export async function buildBundleInMemory() {
-  const [indexSource, cssSource, gameSource] = await Promise.all([
+  const [indexSource, cssSource, saveSystemSource, worldContractsSource, gameSource] = await Promise.all([
     readFile(join(projectRoot, "index.html"), "utf8"),
     readFile(join(projectRoot, "css", "game.css"), "utf8"),
+    readFile(join(projectRoot, "js", "save-system.js"), "utf8"),
+    readFile(join(projectRoot, "js", "world-contracts.js"), "utf8"),
     readFile(join(projectRoot, "js", "game.js"), "utf8"),
   ]);
 
   const assetPattern = /assets\/asset_[0-9]+_[a-f0-9]+\.png/g;
-  const assetPaths = [...new Set(`${cssSource}\n${gameSource}`.match(assetPattern) ?? [])];
+  const assetPaths = [
+    ...new Set(
+      `${cssSource}\n${saveSystemSource}\n${worldContractsSource}\n${gameSource}`.match(
+        assetPattern,
+      ) ?? [],
+    ),
+  ];
   const embeddedAssets = new Map();
 
   await Promise.all(
@@ -35,6 +43,11 @@ export async function buildBundleInMemory() {
     );
 
   const bundledCss = embedAssets(cssSource).replaceAll("</style", "<\\/style");
+  const bundledSaveSystem = embedAssets(saveSystemSource).replaceAll("</script", "<\\/script");
+  const bundledWorldContracts = embedAssets(worldContractsSource).replaceAll(
+    "</script",
+    "<\\/script",
+  );
   const bundledGame = embedAssets(gameSource).replaceAll("</script", "<\\/script");
   const bundledHtml = indexSource
     .replace(
@@ -42,11 +55,24 @@ export async function buildBundleInMemory() {
       `<style>\n${bundledCss}\n</style>`,
     )
     .replace(
+      '<script src="js/save-system.js"></script>',
+      `<script>\n${bundledSaveSystem}\n</script>`,
+    )
+    .replace(
+      '<script src="js/world-contracts.js"></script>',
+      `<script>\n${bundledWorldContracts}\n</script>`,
+    )
+    .replace(
       '<script src="js/game.js"></script>',
       `<script>\n${bundledGame}\n</script>`,
     );
 
-  if (bundledHtml === indexSource) {
+  if (
+    bundledHtml === indexSource ||
+    /<(?:link|script)[^>]+(?:css\/game\.css|js\/(?:save-system|world-contracts|game)\.js)/.test(
+      bundledHtml,
+    )
+  ) {
     throw new Error("Bundle generation failed: source links were not replaced.");
   }
 
