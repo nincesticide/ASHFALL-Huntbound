@@ -1,0 +1,24 @@
+{
+  "name": "ashfall-huntbound",
+  "version": "0.14.0",
+  "private": true,
+  "type": "module",
+  "description": "Dependency-free build and invariant checks for ASHFALL / Huntbound.",
+  "scripts": {
+    "build": "node scripts/build-bundle.mjs",
+    "build:check": "node scripts/build-bundle.mjs --check",
+    "site:materialize": "node scripts/materialize-site.mjs",
+    "test:source": "node --check js/save-system.js && node --check js/world-contracts.js && node --check js/game.js && node --test tests/source-invariants.test.mjs",
+    "test:saves": "node --test tests/save-compatibility.test.mjs tests/save-import.test.mjs",
+    "test:routes": "node --test tests/golden-route.test.mjs",
+    "test:lifecycle": "node --test tests/extraction-lifecycle.test.mjs",
+    "test:multiplayer": "node --test tests/multiplayer-protocol.test.mjs",
+    "test:replay": "node --test tests/deterministic-replay.test.mjs",
+    "test:release": "node --test tests/release-bundle.test.mjs",
+    "test:site": "node --test tests/site-runtime.test.mjs",
+    "test": "npm run test:source && npm run test:saves && npm run test:routes && npm run test:lifecycle && npm run test:multiplayer && npm run test:replay && npm run test:release && npm run test:site"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

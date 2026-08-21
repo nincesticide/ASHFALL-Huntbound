@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+:root {
+  background: #05070a;
+  color-scheme: dark;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #05070a;
+}
+
+body {
+  min-width: 1024px;
+}
+
+.game-shell,
+.game-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  border: 0;
+  background: #05070a;
+}

@@ -1,0 +1,92 @@
+name: Verify source and rebuild bundled QA artifact
+
+on:
+  pull_request:
+    paths:
+      - index.html
+      - css/game.css
+      - js/**
+      - assets/**
+      - site/**
+      - release/ASHFALL_Huntbound_Alpha_v0.14.0_Open_World.html
+      - package.json
+      - tests/**
+      - scripts/build-bundle.mjs
+      - scripts/materialize-site.mjs
+      - .github/workflows/rebuild-v014-release.yml
+  push:
+    branches:
+      - main
+      - codex/v014-source-migration
+    paths:
+      - index.html
+      - css/game.css
+      - js/**
+      - assets/**
+      - site/**
+      - release/ASHFALL_Huntbound_Alpha_v0.14.0_Open_World.html
+      - package.json
+      - tests/**
+      - scripts/build-bundle.mjs
+      - scripts/materialize-site.mjs
+      - .github/workflows/rebuild-v014-release.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-submitted-source:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify submitted source and release parity without rewriting
+        run: npm test
+      - name: Materialize and verify the private Site runtime
+        run: |
+          site_output="$RUNNER_TEMP/ashfall-site"
+          node scripts/materialize-site.mjs --out "$site_output"
+          cd "$site_output"
+          npm run install:ci
+          npm test
+
+  verify-and-bundle:
+    if: github.event_name != 'pull_request' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run source invariants before regeneration
+        run: npm run test:source
+      - name: Rebuild self-contained release
+        run: npm run build
+      - name: Run source and release invariants
+        run: npm test
+      - name: Materialize and verify the private Site runtime
+        run: |
+          site_output="$RUNNER_TEMP/ashfall-site"
+          node scripts/materialize-site.mjs --out "$site_output"
+          cd "$site_output"
+          npm run install:ci
+          npm test
+      - name: Commit refreshed artifact
+        run: |
+          if git diff --quiet -- release/ASHFALL_Huntbound_Alpha_v0.14.0_Open_World.html; then
+            echo "Release artifact is already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add release/ASHFALL_Huntbound_Alpha_v0.14.0_Open_World.html
+          git commit -m "Rebuild v0.14 QA release bundle"
+          git push

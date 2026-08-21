@@ -1,0 +1,403 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "7ed42299-d429-4003-a656-218e94ccc38f",
+  "prevId": "ecdf6156-56af-44b9-ae8c-fea9b5965a60",
+  "tables": {
+    "multiplayer_events": {
+      "name": "multiplayer_events",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "room_code": {
+          "name": "room_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "room_session_id": {
+          "name": "room_session_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "sender_peer_id": {
+          "name": "sender_peer_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sender_user_id": {
+          "name": "sender_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "event_id": {
+          "name": "event_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "protocol_version": {
+          "name": "protocol_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "authority_epoch": {
+          "name": "authority_epoch",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "client_seq": {
+          "name": "client_seq",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "payload": {
+          "name": "payload",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "multiplayer_events_room_id_idx": {
+          "name": "multiplayer_events_room_id_idx",
+          "columns": [
+            "room_code",
+            "id"
+          ],
+          "isUnique": false
+        },
+        "multiplayer_events_session_id_idx": {
+          "name": "multiplayer_events_session_id_idx",
+          "columns": [
+            "room_session_id",
+            "id"
+          ],
+          "isUnique": false
+        },
+        "multiplayer_events_created_idx": {
+          "name": "multiplayer_events_created_idx",
+          "columns": [
+            "created_at"
+          ],
+          "isUnique": false
+        },
+        "multiplayer_events_room_event_idx": {
+          "name": "multiplayer_events_room_event_idx",
+          "columns": [
+            "room_session_id",
+            "event_id"
+          ],
+          "isUnique": true
+        },
+        "multiplayer_events_room_sender_seq_idx": {
+          "name": "multiplayer_events_room_sender_seq_idx",
+          "columns": [
+            "room_session_id",
+            "sender_peer_id",
+            "client_seq"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "multiplayer_members": {
+      "name": "multiplayer_members",
+      "columns": {
+        "room_code": {
+          "name": "room_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "room_session_id": {
+          "name": "room_session_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "peer_id": {
+          "name": "peer_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "character_id": {
+          "name": "character_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "token_hash": {
+          "name": "token_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "joined_at": {
+          "name": "joined_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "last_seen_at": {
+          "name": "last_seen_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "last_client_seq": {
+          "name": "last_client_seq",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        }
+      },
+      "indexes": {
+        "multiplayer_members_token_idx": {
+          "name": "multiplayer_members_token_idx",
+          "columns": [
+            "room_session_id",
+            "token_hash"
+          ],
+          "isUnique": true
+        },
+        "multiplayer_members_room_joined_idx": {
+          "name": "multiplayer_members_room_joined_idx",
+          "columns": [
+            "room_session_id",
+            "joined_at"
+          ],
+          "isUnique": false
+        },
+        "multiplayer_members_code_idx": {
+          "name": "multiplayer_members_code_idx",
+          "columns": [
+            "room_code"
+          ],
+          "isUnique": false
+        },
+        "multiplayer_members_seen_idx": {
+          "name": "multiplayer_members_seen_idx",
+          "columns": [
+            "last_seen_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "multiplayer_members_room_session_id_peer_id_pk": {
+          "columns": [
+            "room_session_id",
+            "peer_id"
+          ],
+          "name": "multiplayer_members_room_session_id_peer_id_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "multiplayer_rooms": {
+      "name": "multiplayer_rooms",
+      "columns": {
+        "room_code": {
+          "name": "room_code",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "room_session_id": {
+          "name": "room_session_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "host_peer_id": {
+          "name": "host_peer_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "host_user_id": {
+          "name": "host_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "invite_token_hash": {
+          "name": "invite_token_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'active'"
+        },
+        "protocol_version": {
+          "name": "protocol_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 2
+        },
+        "authority_epoch": {
+          "name": "authority_epoch",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "lease_expires_at": {
+          "name": "lease_expires_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "snapshot_json": {
+          "name": "snapshot_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "snapshot_version": {
+          "name": "snapshot_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "snapshot_event_cursor": {
+          "name": "snapshot_event_cursor",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "multiplayer_rooms_session_idx": {
+          "name": "multiplayer_rooms_session_idx",
+          "columns": [
+            "room_session_id"
+          ],
+          "isUnique": true
+        },
+        "multiplayer_rooms_expires_idx": {
+          "name": "multiplayer_rooms_expires_idx",
+          "columns": [
+            "expires_at"
+          ],
+          "isUnique": false
+        },
+        "multiplayer_rooms_lease_idx": {
+          "name": "multiplayer_rooms_lease_idx",
+          "columns": [
+            "lease_expires_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {}
+  }
+}
