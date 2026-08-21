@@ -143,9 +143,12 @@ Implemented in the current v0.14.x checkpoint:
 - Made generic and Huntforged crafting atomic with respect to the local profile write.
 - Added deterministic solo coverage from Delve/Deep Hunt launch through extraction or clear, Emberwatch return, crafting, persistence, and fresh reload.
 - Added deterministic multiplayer protocol coverage for host/guest join, readiness, launch, extraction, direct/final-snapshot settlement recovery, replay/reload rejection, stale snapshots, and extraction reevaluation after departure.
-- Serialized relay sends, non-OK degradation, monotonic snapshot rejection, and party-leave reevaluation now harden the browser-hosted transport pending broader protocol coverage.
+- Added an authenticated, membership-bound room protocol with server-derived senders, exact sequences, replay rejection, rotating resume tokens, ordered event cursors, presence/authority leases, durable checkpoints, and camp-only authority succession.
+- Active surface, Delve, and Deep Hunt authority remains on the same browser across reconnect; the protocol deliberately denies active-field host migration instead of pretending another browser can safely reconstruct hidden state.
+- Added persisted run seeds and RNG state, stable participant/entity/settlement identities, a bounded versioned command ledger, and replay coverage that is isolated from presentation-only entropy.
+- The same-browser `BroadcastChannel` path is now an explicit offline/local fallback instead of a parallel authority channel.
 
-This checkpoint remains a free local/host-browser prototype. Production authentication, server-owned progression and simulation, host migration, and durable reconnect/checkpoint recovery remain online-gated; protocol hardening must not be described as authoritative online play.
+This checkpoint remains a free local/host-browser prototype. Site identity now authenticates room membership and the relay durably orders/checkpoints transport, but characters, simulation, loot, and progression remain browser-owned. Production server-owned identity/progression/simulation, hostile-host protection, and active-instance migration remain online-gated; transport authority must not be described as game authority.
 
 Exit criteria:
 

@@ -45,10 +45,14 @@ Completed foundation checkpoint — 2026-08-21:
 - Repaired Deep Hunt activation and added deterministic solo coverage for Delve clear, safe/field extraction, boss settlement, bonfire return, Huntforged crafting, save failure/retry, receipt idempotency, and fresh reload.
 - Added stable run/settlement identities, bounded settlement and surface-reward receipt ledgers, retryable failed settlement commits, and rollback-safe generic/Huntforged crafting.
 - Added deterministic multiplayer protocol coverage for host/guest join, readiness, launch, extraction, direct/final-snapshot settlement recovery, replay/reload rejection, stale snapshots, and extraction reevaluation after departure.
-- Serialized relay POSTs, non-OK relay degradation, monotonic snapshots with stale rejection, and immediate combat/choice/wipe reevaluation after a party member leaves now harden the prototype transport; focused regression cases for each transport failure remain follow-on work.
+- Replaced the unauthenticated mailbox contract with authenticated room membership, hashed invite/member capabilities, server-derived senders, exact member sequences, replay rejection, ordered event cursors, rotating resume tokens, presence/host leases, and D1 checkpoints.
+- Added same-hunter reload recovery and camp-only host succession. Active surface/Delve/Deep Hunt migration is intentionally denied because the replacement browser cannot yet prove or reconstruct authoritative simulation state.
+- Added persisted seeded RNG state, deterministic run/entity/settlement identities, stable participant ordering, a bounded command ledger, and a replay fixture isolated from presentation entropy.
+- Kept `BroadcastChannel` as an explicit endpoint-unavailable local fallback rather than a second simultaneous authority path; polling backs off while idle/hidden and snapshots are coalesced.
+- Added migration-backed Node/D1 protocol coverage for invite/join, forged-authority rejection, exact sequence/replay rejection, nonmember denial, checkpoint/resume/token rotation, hunter binding, lease behavior, camp transfer, and stale epoch rejection.
 - Preserved the owner-only Site policy and zero-additional-cost constraint.
 
-Remaining v0.14.x limits are explicit: the relay still has no production authentication or server-owned simulation/progression, the browser host remains authoritative, host migration is absent, and active runs cannot durably reconnect after all participating browser state is lost. The broader solo/host/guest gameplay matrix remains **Now** work even though the critical solo lifecycle and protocol seams are covered.
+Remaining v0.14.x limits are explicit: Site identity authenticates room operations, not durable online characters; the browser host still owns simulation, loot, settlement creation, and local progression. A hostile host can forge game outcomes, there is no ranked economy or active-field host migration, and a run cannot recover after all authoritative browser state is lost. The broader cross-browser solo/host/guest gameplay matrix and deterministic-core extraction remain **Now/Next** work even though the critical lifecycle and protocol seams are covered.
 
 ## World
 

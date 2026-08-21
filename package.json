@@ -13,9 +13,10 @@
     "test:routes": "node --test tests/golden-route.test.mjs",
     "test:lifecycle": "node --test tests/extraction-lifecycle.test.mjs",
     "test:multiplayer": "node --test tests/multiplayer-protocol.test.mjs",
+    "test:replay": "node --test tests/deterministic-replay.test.mjs",
     "test:release": "node --test tests/release-bundle.test.mjs",
     "test:site": "node --test tests/site-runtime.test.mjs",
-    "test": "npm run test:source && npm run test:saves && npm run test:routes && npm run test:lifecycle && npm run test:multiplayer && npm run test:release && npm run test:site"
+    "test": "npm run test:source && npm run test:saves && npm run test:routes && npm run test:lifecycle && npm run test:multiplayer && npm run test:replay && npm run test:release && npm run test:site"
   },
   "engines": {
     "node": ">=20"

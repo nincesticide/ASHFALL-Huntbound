@@ -1,0 +1,1 @@
+ALTER TABLE `multiplayer_members` ADD `character_id` text NOT NULL;

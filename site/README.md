@@ -20,11 +20,13 @@ The canonical repository's `scripts/materialize-site.mjs` copies this runtime an
 
 This documents the current deployment; it does not promise that a hosting provider will never change its own quotas or pricing. Any change that could create a charge requires separate owner approval.
 
-## Current relay limitations
+## Current room-service boundary
 
-The D1 `multiplayer_events` table is a temporary event mailbox for the private prototype. The browser host still owns simulation, random rolls, loot, and settlement. The relay has no authenticated room membership, authoritative game validation, durable identity, rate limiting, or production anti-cheat guarantees.
+The Worker now authenticates room operations with the private Site user context and stores rooms, character-bound memberships, hashed invite/member capabilities, exact client sequences, ordered events, presence/authority leases, and recovery checkpoints in D1. Resume rotates the membership token and replays only events after the checkpoint boundary. Host authority may transfer at Emberwatch camp; the service rejects active-field migration.
 
-Do not describe this relay as secure, persistent, server-authoritative multiplayer. The staged replacement is documented in `../docs/ONLINE_ARCHITECTURE.md`.
+This is transport authority, not game authority. The browser host still simulates movement and combat, controls random rolls, creates loot/settlements, and writes local character saves. Server-side validation covers protocol shape, membership, sequencing, identities, and host-only messages—not ASHFALL's full game rules. A malicious host can still forge gameplay outcomes, and all-browser-state loss still ends an active run. Do not describe this prototype as server-authoritative multiplayer, a verified economy, or production anti-cheat.
+
+`BroadcastChannel` is retained only as an explicit local fallback when the online endpoint is unavailable. It is not run alongside an authenticated room.
 
 ## Reproduce the Site source
 

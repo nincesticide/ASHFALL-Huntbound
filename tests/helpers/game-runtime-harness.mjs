@@ -20,7 +20,25 @@ const bootAnchor =
 const testBridgeSource = String.raw`
 if (globalThis.__ASHFALL_TEST_MODE__) {
   let testTransportSequence = 0;
+  let forcedRunSeedV147 = null;
+  let forcedRunIdV147 = null;
   const testOutbox = [];
+  const productionSecureRunSeedV147 = secureRunSeedV147;
+  const productionUidV147 = uid;
+  secureRunSeedV147 = () => {
+    if (forcedRunSeedV147 == null) return productionSecureRunSeedV147();
+    const value = forcedRunSeedV147 >>> 0;
+    forcedRunSeedV147 = null;
+    return value;
+  };
+  uid = () => {
+    if (forcedRunIdV147 && isHost && room && !room.run) {
+      const value = forcedRunIdV147;
+      forcedRunIdV147 = null;
+      return value;
+    }
+    return productionUidV147();
+  };
   send = message => {
     const event = {
       ...structuredCloneSafe(message),
@@ -145,11 +163,21 @@ if (globalThis.__ASHFALL_TEST_MODE__) {
       room.missionId = missionId;
       room.delveId = delveId;
     },
+    configureNextRun(seed, runId = 'test-run-v147') {
+      forcedRunSeedV147 = Number(seed) >>> 0;
+      forcedRunIdV147 = String(runId);
+    },
+    burnPresentationEntropy(count = 1000) {
+      for (let i = 0; i < count; i++) Math.random();
+    },
     toggleReady() {
       return toggleReady();
     },
     launchExpedition() {
       return launchExpedition();
+    },
+    submitAction(action) {
+      return submitAction(structuredCloneSafe(action));
     },
     patchRunLoot(playerId, patch) {
       const player = room?.run?.players?.[playerId];
@@ -526,11 +554,20 @@ export async function createGameRuntimeHarness(options = {}) {
     selectExpedition(missionId, delveId) {
       api.selectExpedition(missionId, delveId);
     },
+    configureNextRun(seed, runId) {
+      api.configureNextRun(seed, runId);
+    },
+    burnPresentationEntropy(count) {
+      api.burnPresentationEntropy(count);
+    },
     toggleReady() {
       api.toggleReady();
     },
     launchExpedition() {
       api.launchExpedition();
+    },
+    submitAction(action) {
+      api.submitAction(cloneIntoHostRealm(action));
     },
     patchRunLoot(playerId, patch) {
       api.patchRunLoot(playerId, cloneIntoHostRealm(patch));

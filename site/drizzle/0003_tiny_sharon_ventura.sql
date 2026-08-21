@@ -1,0 +1,1 @@
+ALTER TABLE `multiplayer_rooms` ADD `snapshot_event_cursor` integer DEFAULT 0 NOT NULL;

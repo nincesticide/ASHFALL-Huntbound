@@ -1,6 +1,6 @@
 # ASHFALL Online Architecture
 
-Status: **proposed direction for technical spikes; no backend vendor or framework is locked**.
+Status: **Stage 0 in progress; authenticated room transport is implemented, but server-owned characters and simulation are not**.
 
 Current cost constraint: **the foundation remains zero-additional-cost until the owner separately approves spending**. The existing private Site and its managed D1 binding may be used within included quotas; the prototype must back off, degrade, or pause before a paid service or quota overage is enabled.
 
@@ -30,46 +30,45 @@ The current implementation is useful for private testing but is not a production
 
 The relay handler, D1 schema/migration, private Site shell, locked build, and logical hosting configuration are versioned under `site/`. `scripts/materialize-site.mjs` produces the deployable tree and injects the canonical root game source, so the Site no longer owns a second editable game copy. The physical D1 resource, access policy, and deployment history remain Sites control-plane state and cannot be reproduced from Git alone.
 
-### Current client authority
+### Current client and transport authority
 
 - Character profiles and party records are stored in browser `localStorage`.
-- A random per-tab peer ID lives in `sessionStorage`.
-- Same-browser rooms use `BroadcastChannel`.
+- The private Site identity authenticates room requests; each selected local hunter also has an opaque multiplayer character ID.
+- D1 stores character-bound room memberships. Raw invite and membership capabilities are hashed at rest, and a successful resume rotates the member token.
+- `BroadcastChannel` is used only as an explicit local fallback when the online room endpoint is unavailable. It does not run beside an authenticated room.
 - The room creator’s browser owns the canonical `room`, `worldV14`, and `run` objects.
 - Guests send commands to that browser and render its snapshots.
 - The host browser generates maps, validates movement, resolves combat, rolls loot, and creates settlements.
-- Guests apply settlement messages to their own local profiles.
+- Settlements target the member's opaque hunter identity; each browser still validates and applies its own settlement to `localStorage`.
 
-This is “host authoritative” only in the peer-to-peer sense. The host remains an untrusted game client.
+The service is authoritative for membership, message order, replay rejection, room epoch, lease, and checkpoint version. It is not authoritative for ASHFALL game rules or progression. “Host authoritative” still means an untrusted browser host.
 
 ### Current remote transport
 
-The Site relay stores JSON events in a D1 `multiplayer_events` table:
+The Site Worker and D1 schema implement a versioned room protocol:
 
-- `GET` polls events after a numeric cursor.
-- `POST` appends an event up to 220 KB.
-- Old events expire after two hours.
-- The client polls at approximately 180 ms immediately after activity, backs off to at most 900 ms while idle, and waits 1.5 seconds after an error.
-- Expired-row cleanup is limited to approximately once per minute per warm Worker isolate instead of running on every relay request.
-- Full room snapshots are frequently transmitted.
-- New rooms use six characters drawn from an unambiguous 32-character alphabet.
+- Create and join bind an authenticated Site user, peer, and opaque hunter identity to a room/session. Joining requires the invite capability except for an owner-only same-user testing path.
+- Every mutating request requires the current member capability. The Worker derives sender identity from membership and requires the next exact client sequence.
+- Events have a room epoch and ordered server cursor. Duplicate, skipped, stale-epoch, nonmember, and guest host-only messages are rejected.
+- Host snapshots use compare-and-swap checkpoint versions and record their event boundary transactionally; reconnect fetches the checkpoint plus only later events.
+- Heartbeats renew member presence and the current host lease. Camp-only claim/handoff advances the epoch; active surface, Delve, and Deep Hunt migration is denied.
+- Explicit host departure during active field play closes the room. Reload does not send a destructive leave and can resume the same hunter while the lease/session remain valid.
+- The client polls quickly after activity, backs off to roughly 2.4 seconds while idle and 5 seconds while hidden, coalesces checkpoints, and degrades to the explicit local fallback only when the endpoint is unavailable.
+- Event rows expire after two hours, room/member state is bounded by expiry, and cleanup is throttled per warm Worker isolate.
 
 ### Security and reliability limitations
 
-- No account authentication or durable player identity.
-- No authenticated room membership or signed invitation.
-- Room code is both discovery and effective access control.
-- Relay accepts the sender and `peerId` contained in the payload.
-- No server-side command schema or game-rule validation.
-- No command sequence, acknowledgement, durable deduplication, or replay protection.
-- No rate limits, presence lease, reconnect reservation, host migration, or authoritative checkpoint.
+- Site authentication is not a durable ASHFALL account/character service; characters and inventories remain local and editable.
+- Capability URLs/tokens protect private-room membership but are not a public matchmaking, moderation, ban, or account-recovery system.
+- The Worker validates protocol schemas and identity relationships, not the complete movement, combat, anatomy, loot, crafting, or settlement rules.
+- Ordered sequences and checkpoint cursors reject protocol replay, but they cannot stop the browser host from authoring a fraudulent yet well-formed snapshot or settlement.
+- There is no comprehensive per-account/burst rate limiter yet; polling and full recovery snapshots still consume D1/bandwidth quota.
 - Any client-owned profile, gear, stat, score, or settlement can be modified locally.
-- Host loss ends authority for the room.
-- The relay has no authenticated room-administration operation; stale rows rely on time-based expiry.
-- Polling and repeated full snapshots still create avoidable database and bandwidth load despite the free-quota backoff.
-- In-memory client deduplication disappears on reload.
+- Same-host reload is recoverable, and authority may pass at camp, but active-field host loss freezes/closes the run. Losing all authoritative browser state is not recoverable.
+- Checkpoints persist browser-authored room state; they are recovery aids, not independently verified simulation state.
+- Run RNG and a bounded command ledger now support a deterministic slice, but authoritative rules still share the gameplay monolith and browser globals. Unrelated host code can still consume the contextual run stream until Stage 0 extraction is complete.
 
-These limitations should be documented, not hidden. The relay can remain as a private-preview compatibility path while its replacement is built.
+These limitations should be documented, not hidden. The room service is a useful authenticated private-preview foundation while deterministic simulation and durable character authority are extracted.
 
 ## Architectural principles
 
@@ -189,6 +188,8 @@ Select the candidate with the smallest operational surface that passes the spike
 ### Stage 0 — deterministic core
 
 Extract the simulation and content registry. Introduce seeded RNG, schemas, migrations, command/event types, and replay tests while the current Site continues to operate.
+
+Current progress: normal expedition/surface runs persist a seeded RNG state, stable run/entity/settlement identities, participant ordering, and a bounded versioned command ledger; automated replay verifies a complete deterministic settlement slice despite different presentation entropy. The rules are not yet pure or browser-independent, so Stage 0 is not complete.
 
 Exit gate:
 

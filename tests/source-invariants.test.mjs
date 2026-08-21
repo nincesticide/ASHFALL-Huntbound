@@ -183,7 +183,7 @@ test("surface encounter clicks target the exact tile and preserve the auto-attac
     interactionFlow,
     /send\(\{type:'worldInteractV141',peerId,objectId:o\.id,autoAttack:!!opts\.autoAttack\}\)/,
   );
-  assert.match(gameSource, /hostWorldInteractV141\(msg\.peerId,msg\.objectId,!!msg\.autoAttack\)/);
+  assert.match(gameSource, /hostWorldInteractV141\(sender,msg\.objectId,!!msg\.autoAttack\)/);
 
   const skirmishFlow = sourceBetween("function generateSurfaceSkirmishV142", "function worldResourceRewardV141");
   assert.match(skirmishFlow, /run\.map=structuredCloneSafe\(w\.map\)/);
@@ -192,14 +192,16 @@ test("surface encounter clicks target the exact tile and preserve the auto-attac
   assert.match(skirmishFlow, /action:\{type:'attack'/);
 });
 
-test("the private relay client uses six-character rooms and free-quota-aware polling", () => {
+test("the private room client uses authenticated sessions, heartbeat leases, and free-quota-aware polling", () => {
   const transportFlow = sourceBetween(
     "let remoteTransportV141=",
     "let combatMeterMode=",
   );
   assert.doesNotMatch(transportFlow, /method:'DELETE'/);
-  assert.match(transportFlow, /nextPollDelay=Math\.min\(900,260\+state\.idlePolls\*90\)/);
-  assert.match(transportFlow, /state\.connected\?state\.nextPollDelay:1500/);
+  assert.match(transportFlow, /'x-ashfall-member-token'/);
+  assert.match(transportFlow, /'x-ashfall-room-session'/);
+  assert.match(transportFlow, /Date\.now\(\)-state\.heartbeatAt>=12000/);
+  assert.match(transportFlow, /Math\.min\(document\.hidden\?5000:2400,650\+state\.idlePolls\*140\)/);
   assert.match(
     gameSource,
     /const ROOM_CODE_ALPHABET_V143='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';/,
