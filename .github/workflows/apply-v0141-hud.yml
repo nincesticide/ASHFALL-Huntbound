@@ -1,0 +1,95 @@
+name: Apply ASHFALL v0.14.1 Battlefield HUD
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'migration/ASHFALL_v0.14.1_Battlefield_HUD_Patch.zip.b64'
+      - '.github/workflows/apply-v0141-hud.yml'
+      - 'migration/trigger-v0141-hud.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  apply-hud:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Decode and install Battlefield HUD patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/ashfall-hud
+          mkdir -p /tmp/ashfall-hud
+          base64 --decode migration/ASHFALL_v0.14.1_Battlefield_HUD_Patch.zip.b64 > /tmp/ashfall-hud.zip
+          unzip -q /tmp/ashfall-hud.zip -d /tmp/ashfall-hud
+          cp /tmp/ashfall-hud/ASHFALL_v0.14.1_Battlefield_HUD.css css/battlefield-hud.css
+          cp /tmp/ashfall-hud/ASHFALL_v0.14.1_Battlefield_HUD.js js/battlefield-hud.js
+          cp /tmp/ashfall-hud/ASHFALL_v0.14.1_HUD_README.md HUD_V0.14.1.md
+
+      - name: Add HUD initialization and wire source files
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          js_path = Path('js/battlefield-hud.js')
+          js = js_path.read_text(encoding='utf-8')
+          boot = "\n\n/* Initialize after the canonical v0.14 game has booted. */\ninitBattleHudV141();\nrenderAll();\n"
+          if 'Initialize after the canonical v0.14 game has booted.' not in js:
+              js += boot
+          js_path.write_text(js, encoding='utf-8')
+
+          index_path = Path('index.html')
+          index = index_path.read_text(encoding='utf-8')
+          hud_css = '<link rel="stylesheet" href="css/battlefield-hud.css">'
+          hud_js = '<script src="js/battlefield-hud.js"></script>'
+          if hud_css not in index:
+              index = index.replace('<link rel="stylesheet" href="css/game.css">', '<link rel="stylesheet" href="css/game.css">\n' + hud_css)
+          if hud_js not in index:
+              index = index.replace('<script src="js/game.js"></script>', '<script src="js/game.js"></script>\n' + hud_js)
+          index = index.replace('ASHFALL Huntbound v0.14.0 — Open World', 'ASHFALL Huntbound v0.14.1 — Battlefield HUD')
+          index = index.replace('HUNTBOUND v0.14.0 // OPEN WORLD // EXPLORE • HUNT • DELVE • FORGE', 'HUNTBOUND v0.14.1 // BATTLEFIELD HUD // EXPLORE • HUNT • DELVE • FORGE')
+          index_path.write_text(index, encoding='utf-8')
+
+          readme_path = Path('README.md')
+          readme = readme_path.read_text(encoding='utf-8')
+          readme = readme.replace('v0.14.0 Open World', 'v0.14.1 Battlefield HUD')
+          if '## Battlefield HUD v0.14.1' not in readme:
+              readme += '''\n\n## Battlefield HUD v0.14.1\n\nThe canonical source includes the battlefield-first HUD: bottom combat dock, compact target frame, collapsible objectives, optional Hunt Map, and closed-by-default utility drawers.\n'''
+          readme_path.write_text(readme, encoding='utf-8')
+          PY
+
+      - name: Validate source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f index.html
+          test -f css/game.css
+          test -f css/battlefield-hud.css
+          test -f js/game.js
+          test -f js/battlefield-hud.js
+          test -d assets
+          grep -q 'css/battlefield-hud.css' index.html
+          grep -q 'js/battlefield-hud.js' index.html
+          grep -q 'v0.14.1' index.html
+          node --check js/game.js
+          node --check js/battlefield-hud.js
+
+      - name: Commit Battlefield HUD
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html README.md HUD_V0.14.1.md css/battlefield-hud.css js/battlefield-hud.js
+          if git diff --cached --quiet; then
+            echo "No HUD changes to commit."
+          else
+            git commit -m "Apply ASHFALL v0.14.1 Battlefield HUD"
+            git push
+          fi
