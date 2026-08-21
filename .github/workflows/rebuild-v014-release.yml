@@ -1,0 +1,43 @@
+name: Rebuild bundled QA artifact
+
+on:
+  push:
+    branches:
+      - main
+      - codex/v014-source-migration
+    paths:
+      - index.html
+      - css/game.css
+      - js/game.js
+      - assets/**
+      - scripts/build-bundle.mjs
+      - .github/workflows/rebuild-v014-release.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  bundle:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Rebuild self-contained release
+        run: node scripts/build-bundle.mjs
+      - name: Commit refreshed artifact
+        run: |
+          if git diff --quiet -- release/ASHFALL_Huntbound_Alpha_v0.14.0_Open_World.html; then
+            echo "Release artifact is already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add release/ASHFALL_Huntbound_Alpha_v0.14.0_Open_World.html
+          git commit -m "Rebuild v0.14 QA release bundle"
+          git push
