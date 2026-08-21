@@ -9,7 +9,7 @@ const [indexSource, cssSource, gameSource] = await Promise.all([
 ]);
 
 test("combat controls use a compact six-command bar with accessible shortcuts", () => {
-  assert.match(indexSource, /class="panel actions-panel-v141 command-bar-v148"/);
+  assert.match(indexSource, /class="panel actions-panel-v141 command-bar-v148 command-bar-v149"/);
   assert.match(indexSource, /id="actionHint" role="status" aria-live="polite"/);
   assert.match(indexSource, /id="targetInfo"[^>]+tabindex="0"/);
 
@@ -45,14 +45,32 @@ test("command bar progressively discloses target detail and collapses for non-ac
   assert.match(cssSource, /data-command-state="settlement"\] \.actions>button:not\(#retrySettlementV145\)/);
 });
 
-test("HUD context automatically prioritizes map, party, and vitals by play mode", () => {
+test("field HUD keeps the radar visible while secondary panels stay opt-in", () => {
   assert.match(gameSource, /const HUD_CONTEXT_V148=\{mode:null\}/);
-  assert.match(gameSource, /if\(mode==='run'\)\{setHudPanelV141\('party',true\);setHudPanelV141\('intel',false\)\}/);
-  assert.match(gameSource, /else if\(mode==='world'\)\{setHudPanelV141\('party',false\);setHudPanelV141\('intel',true\)\}/);
-  assert.match(gameSource, /else if\(mode==='camp'\)\{setHudPanelV141\('party',true\);setHudPanelV141\('intel',false\)\}/);
+  assert.match(gameSource, /if\(mode==='run'\)\{setHudPanelV141\('party',false\);setHudPanelV141\('intel',false\)\}/);
+  assert.match(gameSource, /else if\(mode==='world'\)\{setHudPanelV141\('party',false\);setHudPanelV141\('intel',false\)\}/);
+  assert.match(gameSource, /else if\(mode==='camp'\)\{setHudPanelV141\('party',false\);setHudPanelV141\('intel',false\)\}/);
   assert.match(cssSource, /body\.mode-run-v141 #targetBadge\{display:none\}/);
-  assert.match(cssSource, /body\.mode-run-v141 \.hud-dock-v132\{width:238px\}/);
-  assert.match(cssSource, /body\.mode-run-v141 \.hud-drawer-v141\[data-hud-panel="party"\]\{width:224px/);
+  assert.match(cssSource, /\.hud-drawer-v141\.radar-panel-v149\{display:block!important/);
+  assert.match(cssSource, /\.radar-panel-v149 canvas\.minimap\{width:126px!important;height:78px!important/);
+  assert.match(cssSource, /#hudDockV132\{display:none!important\}/);
+  assert.match(cssSource, /\.combat-vitals-bars-v149\{display:grid;grid-template-columns:1fr 1fr/);
+});
+
+test("world clock and reusable equipment objects exercise the physical inventory loop", () => {
+  assert.match(indexSource, /id="worldClockV149"/);
+  assert.match(indexSource, /id="combatHpFillV149"/);
+  assert.match(indexSource, /id="combatResFillV149"/);
+  assert.match(gameSource, /const V149_WORLD_MINUTES_PER_REAL_MINUTE=60/);
+  assert.match(gameSource, /function worldClockStateV149\(/);
+  assert.match(gameSource, /function persistWorldClockV149\(/);
+  assert.match(gameSource, /const V149_GEAR_VISUALS=Object\.freeze\(\{head:'head',shoulders:'shoulders',chest:'chest',gloves:'gloves',boots:'boots',weapon:'weapon',offhand:'offhand',ring:'ring',necklace:'necklace'\}\)/);
+  assert.match(gameSource, /const gearDrops=\[/);
+  assert.match(gameSource, /objType:'gear'/);
+  assert.match(gameSource, /if\(o\.objType==='gear'\)/);
+  assert.match(gameSource, /profile\.inventory\.push\(normalizeItemV132\(reward\.gear\)\)/);
+  assert.match(cssSource, /\.gear-object-v149\.gear-weapon>i/);
+  assert.match(cssSource, /\.gear-object-v149\.gear-ring>i/);
 });
 
 test("combat button handlers preserve the canonical gameplay actions", () => {

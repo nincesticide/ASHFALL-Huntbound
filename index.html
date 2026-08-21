@@ -50,9 +50,13 @@
       <div class="levelup-banner-v11" id="levelUpBannerV11"><div><div class="levelup-kicker">HUNTER ASCENDANT</div><div class="levelup-number" id="levelUpNumberV11">2</div><div class="levelup-title">LEVEL UP</div><div class="levelup-sub" id="levelUpSubV11">New power unlocked.</div></div></div>
       <div class="combat-hud-v11 camp" id="combatHudV11"><div class="v11-core"><div class="v11-avatar" id="v11Avatar">◆</div><div><div class="v11-name" id="v11HudName">No Hunter</div><div class="v11-meta" id="v11HudMeta">Choose a hunter</div></div><div class="v11-rating"><b id="v11HudGR">0</b><span>GEAR</span></div></div><div class="v11-hbar"><span>HP</span><div class="bar"><div class="fill hpfill" id="v11HpFill"></div></div><strong id="v11HpText">—</strong></div><div class="v11-hbar"><span id="v11ResLabel">RES</span><div class="bar"><div class="fill resfill" id="v11ResFill"></div></div><strong id="v11ResText">—</strong></div><div class="v11-hbar v11-xp"><span>XP</span><div class="bar"><div class="fill xpfill" id="v11XpFill"></div></div><strong id="v11XpText">—</strong></div><div class="v11-status" id="v11Status"></div><div class="v11-threat safe" id="v11Threat">EMBERWATCH — SAFE</div></div>
       <div id="skillTooltip" class="skill-tooltip" role="tooltip"></div>
+      <div class="world-clock-v149" id="worldClockV149" aria-label="World time">
+        <div class="world-clock-face-v149" aria-hidden="true"><span id="worldClockIconV149">☀</span><i id="worldClockHandV149"></i></div>
+        <div class="world-clock-readout-v149"><b id="worldClockTimeV149">07:00</b><span id="worldClockPhaseV149">DAWN</span></div>
+      </div>
       <div class="hud-controls-v141" id="hudControlsV141" aria-label="HUD panels">
-        <button type="button" data-hud-toggle="party" aria-pressed="true">Party</button>
-        <button type="button" data-hud-toggle="intel" aria-pressed="true">Map</button>
+        <button type="button" data-hud-toggle="party" aria-pressed="false">Party</button>
+        <button type="button" data-hud-toggle="intel" aria-pressed="false">Map</button>
         <button type="button" data-hud-toggle="meters" aria-pressed="false">Meters</button>
         <button type="button" data-hud-toggle="loot" aria-pressed="false">Loot</button>
         <button type="button" data-hud-toggle="log" aria-pressed="false">Log</button>
@@ -306,10 +310,21 @@
         <div id="runLoot" class="lootlist" style="margin-top:6px"></div>
       </div>
 
-      <div class="panel actions-panel-v141 command-bar-v148" data-command-state="idle" aria-label="Combat commands">
+      <div class="target-anchor-v149" aria-live="polite">
+        <div id="targetInfo" class="targetpanel" tabindex="0" aria-label="Current target. Hover or focus for details.">Target: automatic nearest enemy. Click an enemy to focus it.</div>
+      </div>
+
+      <div class="panel actions-panel-v141 command-bar-v148 command-bar-v149" data-command-state="idle" aria-label="Combat commands">
         <div class="ptitle">Actions</div>
+        <div class="combat-vitals-v149" id="combatVitalsV149">
+          <div class="combat-vitals-meta-v149"><b id="combatVitalsNameV149">NO HUNTER</b><span id="combatVitalsStateV149">EMBERWATCH</span><em id="combatVitalsGearV149">GR 0</em></div>
+          <div class="combat-vitals-bars-v149">
+            <div class="combat-vital-v149 hp"><span>HP</span><div><i id="combatHpFillV149"></i></div><b id="combatHpTextV149">—</b></div>
+            <div class="combat-vital-v149 resource"><span id="combatResLabelV149">RES</span><div><i id="combatResFillV149"></i></div><b id="combatResTextV149">—</b></div>
+          </div>
+        </div>
         <div class="tiny" id="actionHint" role="status" aria-live="polite">Join a room to begin.</div>
-        <div id="targetInfo" class="targetpanel" tabindex="0" aria-label="Current target. Hover or focus for details.">Target: automatic nearest enemy. Click an enemy to focus it.</div><div id="partPanel" class="partpanel" aria-label="Target anatomy"></div>
+        <div id="partPanel" class="partpanel" aria-label="Target anatomy"></div>
         <div class="actions">
           <button id="attackBtn">Attack</button>
           <button id="skill1Btn">Skill I</button>
@@ -329,9 +344,9 @@
         <div class="action-help">Hover an action for live damage, healing, range, cost, and effects.</div>
       </div>
 
-      <div class="panel hud-drawer-v141 intel-panel-v141 is-open" data-hud-panel="intel">
+      <div class="panel hud-drawer-v141 intel-panel-v141 radar-panel-v149 is-open" data-hud-panel="intel">
         <div class="ptitle"><span>Hunt Intel</span><span class="tiny">LIVE</span></div>
-        <div class="minimap-wrap"><canvas id="minimap" class="minimap" width="300" height="180"></canvas></div>
+        <div class="minimap-wrap radar-frame-v149"><span class="radar-north-v149">N</span><canvas id="minimap" class="minimap" width="300" height="180"></canvas></div>
         <div id="objectiveLines" class="objective-lines">Explore camp and choose a hunt.</div>
       </div>
 
