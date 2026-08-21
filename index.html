@@ -306,10 +306,10 @@
         <div id="runLoot" class="lootlist" style="margin-top:6px"></div>
       </div>
 
-      <div class="panel actions-panel-v141">
+      <div class="panel actions-panel-v141 command-bar-v148" data-command-state="idle" aria-label="Combat commands">
         <div class="ptitle">Actions</div>
-        <div class="tiny" id="actionHint">Join a room to begin.</div>
-        <div id="targetInfo" class="targetpanel">Target: automatic nearest enemy. Click an enemy to focus it.</div><div id="partPanel" class="partpanel"></div>
+        <div class="tiny" id="actionHint" role="status" aria-live="polite">Join a room to begin.</div>
+        <div id="targetInfo" class="targetpanel" tabindex="0" aria-label="Current target. Hover or focus for details.">Target: automatic nearest enemy. Click an enemy to focus it.</div><div id="partPanel" class="partpanel" aria-label="Target anatomy"></div>
         <div class="actions">
           <button id="attackBtn">Attack</button>
           <button id="skill1Btn">Skill I</button>
