@@ -155,7 +155,7 @@ test("death, summary, gate, and multiplayer returns converge on the Emberwatch b
   assert.match(gateFlow, /returnPartyToEmberwatchV142\(/);
 
   const settlementFlow = sourceBetween("function settleRun", "function applySettlement");
-  assert.match(settlementFlow, /if\(!success\)resetToEmberwatchV142\(\)/);
+  assert.match(settlementFlow, /if\(!pending\.success\)resetToEmberwatchV142\(\)/);
 
   assert.match(
     gameSource,

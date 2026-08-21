@@ -42,7 +42,13 @@ Completed foundation checkpoint — 2026-08-21:
 - Added current, all-class, legacy, corrupt, unknown-field, quota-failure, stale-preview, and recovery save coverage; the canonical localStorage key remains unchanged.
 - Added player-controlled local JSON export, validated preview, add-only/conflict-copy import, automatic recovery snapshots, and corrupt-byte quarantine without a paid service.
 - Added executable production-route coverage for North Gate entry, exact animal combat without teleporting, single-claim resources, surface wipe to bonfire, and Emberroot Cellar selection.
+- Repaired Deep Hunt activation and added deterministic solo coverage for Delve clear, safe/field extraction, boss settlement, bonfire return, Huntforged crafting, save failure/retry, receipt idempotency, and fresh reload.
+- Added stable run/settlement identities, bounded settlement and surface-reward receipt ledgers, retryable failed settlement commits, and rollback-safe generic/Huntforged crafting.
+- Added deterministic multiplayer protocol coverage for host/guest join, readiness, launch, extraction, direct/final-snapshot settlement recovery, replay/reload rejection, stale snapshots, and extraction reevaluation after departure.
+- Serialized relay POSTs, non-OK relay degradation, monotonic snapshots with stale rejection, and immediate combat/choice/wipe reevaluation after a party member leaves now harden the prototype transport; focused regression cases for each transport failure remain follow-on work.
 - Preserved the owner-only Site policy and zero-additional-cost constraint.
+
+Remaining v0.14.x limits are explicit: the relay still has no production authentication or server-owned simulation/progression, the browser host remains authoritative, host migration is absent, and active runs cannot durably reconnect after all participating browser state is lost. The broader solo/host/guest gameplay matrix remains **Now** work even though the critical solo lifecycle and protocol seams are covered.
 
 ## World
 

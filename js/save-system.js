@@ -279,6 +279,8 @@
       mythicsFound: [],
       trophies: [],
       titles: ['Hunter'],
+      settlementReceiptsV145: [],
+      worldRewardReceiptsV145: [],
     };
     for (const [key, fallback] of Object.entries(arrayDefaults)) {
       if (!Array.isArray(profile[key])) profile[key] = cloneJson(fallback);

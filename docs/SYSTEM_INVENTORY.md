@@ -19,6 +19,8 @@ This document describes what the v0.14.0 client actually does. It is not a repla
 | `tests/source-invariants.test.mjs` | Static compatibility guards for split boot, 57 assets, profile save key, ten equipment slots, bonfire returns, and exact-tile surface attacks. |
 | `tests/save-compatibility.test.mjs`, `tests/save-import.test.mjs` | Current/legacy/all-class fixtures plus pure migration, unknown-field, import-conflict, storage-failure, stale-preview, and recovery coverage. |
 | `tests/golden-route.test.mjs` | Executes the production support modules and instrumented in-memory game source through critical Emberwatch/Emberwood routes without shipping a test API. |
+| `tests/extraction-lifecycle.test.mjs` | Executes the solo Delve/Deep Hunt settlement, retry, bonfire, Huntforged crafting, and reload lifecycle. |
+| `tests/multiplayer-protocol.test.mjs` | Executes two-browser join/readiness/launch/extraction, exactly-once direct/snapshot settlement delivery, replay/reload rejection, stale snapshots, and departure reevaluation. |
 | `tests/release-bundle.test.mjs` | Byte-for-byte bundle parity guard. |
 | `site/` | Versioned private ChatGPT Site shell, worker entry, D1 relay/schema/migration, locked dependency build, and presentation assets. The game payload is generated, not edited here. |
 | `scripts/materialize-site.mjs` | Dependency-free promotion boundary that combines `site/` with the canonical root game in an explicitly chosen safe destination. |
@@ -37,7 +39,7 @@ The physical D1 resource, private access policy, immutable versions, and deploym
 | `snapshot` | Each guest browser | Memory only | A host-authored clone used for display and local input checks. |
 | `room.worldV14` | Host browser | Memory only | Current surface instance, encounters, resources, and entrances. Lost on refresh/room loss. |
 | `room.run` | Host browser | Memory only | Expedition/skirmish simulation and reward calculation. Lost on refresh/room loss. |
-| Settlement payload | Host browser creates; each recipient browser applies | Event/in-memory, then folded into local profile | No authentication, signature, revision check, or idempotency key. |
+| Settlement payload | Host browser creates; each recipient browser applies | Event/in-memory, then folded into local profile | Local IDs, rollback/retry, and bounded receipts prevent ordinary duplicates; no authentication, signature, revision/CAS, or server ledger exists. |
 | HUD/render/audio/input state | Each browser | Memory only | Presentation only, although rendering and rules currently share globals. |
 | Relay events | Private Site relay | About two hours according to the hosted implementation inventory | Mailbox transport only; it does not validate game rules or own game state. |
 
@@ -154,7 +156,10 @@ The physical D1 resource, private access policy, immutable versions, and deploym
 - Remote path: `GET` polling and `POST` events through `/api/multiplayer`; clients have no room-delete endpoint.
 - New rooms use six-character unambiguous codes. Relay polling starts at 180 ms after activity and backs off to at most 900 ms while idle or 1.5 seconds after errors.
 - Deduplication: in-memory `_transportId` set capped at 900 entries.
+- Relay POSTs are serialized per active transport; non-OK responses degrade the connection state instead of reporting success.
+- Host snapshots increment `stateVersionV146`; guests reject stale versions from the same host.
 - Room lifecycle and host dispatch: `createRoom`, `joinRoom`, `broadcastSnapshot`, `onNetwork`, and `leaveRoom`.
+- A departure immediately reevaluates pending combat actions, extraction votes, or a party wipe.
 - Guests send commands; the host mutates `room`; guests accept full `snapshot` messages.
 
 **Authority:** the host browser is the rules authority in honest clients. The relay is an unauthenticated mailbox and accepts opaque events. Room codes and `_senderPeerId` are not credentials.
@@ -200,16 +205,16 @@ The physical D1 resource, private access policy, immutable versions, and deploym
 - Wipe recovery: Recovery Pouch `secureId`, `deathCache`, Nemesis survivor promotion, probabilistic item recovery, and bonfire reset.
 - Party records: `loadPartyRecords` and `updatePartyRecord`.
 
-**Authority:** host calculates a settlement per player. The target client trusts and applies it to local storage. There is no `runId`, `settlementId`, applied-settlement ledger, signature, revision, or transaction; duplicate delivery can duplicate rewards.
+**Authority:** host calculates a settlement per player. The target client still trusts that payload, but the local checkpoint now assigns run/settlement IDs, applies profile mutation and receipt insertion with rollback on write failure, retains a failed host result for retry, and suppresses repeat delivery through a bounded receipt ledger. There is no authenticated profile binding, signature, revision/CAS, durable guest acknowledgement, or server-owned ledger.
 
-**Proposed seam:** make settlement a pure, versioned, idempotent operation. First preserve the exact v0.14 loss/reward formulas in golden fixtures; only then add durable transaction IDs and authoritative persistence.
+**Implemented local seam:** ID-bearing, retryable, receipt-guarded settlement and rollback-safe generic/Huntforged crafting are covered by solo and host/guest lifecycle tests. The next seam is a pure settlement operation with authenticated revisions and durable authoritative persistence; current pending/completed room rows remain memory-only.
 
 ### 12. Build, release, and regression protection
 
 **Observed code**
 
 - Split source is canonical; the release HTML is generated.
-- `npm test` runs syntax/source invariants, release parity, and Site materialization/parity checks with no third-party package dependency.
+- `npm test` runs syntax/source invariants, save compatibility, golden routes, solo extraction/crafting/reload, host/guest settlement protocol, release parity, and Site materialization/parity checks with no third-party package dependency.
 - CI rebuild/check behavior lives in `.github/workflows/rebuild-v014-release.yml`.
 
 **Authority:** repository/CI quality gate.

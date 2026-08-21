@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createGameRuntimeHarness } from "./helpers/game-runtime-harness.mjs";
+import {
+  createGameRuntimeHarness,
+  createMemoryStorage,
+} from "./helpers/game-runtime-harness.mjs";
 
 const BONFIRE_SPAWNS = new Set(["14,12", "16,12", "14,11", "16,11"]);
+const PROFILE_KEY = "ashfall_mp_alpha_profiles_v1";
 
 async function soloAtEmberwatch() {
   const game = await createGameRuntimeHarness();
@@ -80,6 +84,30 @@ test("a surface resource grants its reward once and cannot be collected twice", 
   assert.equal(afterSecondCollection.profile.materials.common, 2);
   assert.equal(afterSecondCollection.profile.materials.rare, 0);
   assert.equal(afterSecondCollection.profile.worldV14.contracts.resources, 1);
+});
+
+test("a rejected resource save leaves the node gatherable and grants once after recovery", async () => {
+  const localStorage = createMemoryStorage();
+  const game = await createGameRuntimeHarness({ localStorage, peerId: "resource-retry" });
+  game.createSoloHunter("Resource Keeper", "arcanist");
+  enterEmberwood(game);
+  game.placeWorldPlayer(5, 13);
+
+  localStorage.failWritesFor(PROFILE_KEY);
+  game.interactWorld("herb1");
+  const blocked = game.readState();
+  assert.equal(blocked.room.worldV14.resources.find((resource) => resource.id === "herb1").done, false);
+  assert.equal(blocked.profile.gold, 50);
+  assert.equal(blocked.profile.materials.common, 0);
+  assert.equal(blocked.profile.worldRewardReceiptsV145.length, 0);
+
+  localStorage.allowWritesFor(PROFILE_KEY);
+  game.interactWorld("herb1");
+  const recovered = game.readState();
+  assert.equal(recovered.room.worldV14.resources.find((resource) => resource.id === "herb1").done, true);
+  assert.equal(recovered.profile.gold, 70);
+  assert.equal(recovered.profile.materials.common, 2);
+  assert.equal(recovered.profile.worldRewardReceiptsV145.length, 1);
 });
 
 test("a surface party wipe clears the field and returns the hunter to the bonfire", async () => {

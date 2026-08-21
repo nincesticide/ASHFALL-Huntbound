@@ -92,6 +92,8 @@
     "selectedTitle": "Tracker",
     "wagerStats": { "hands": 8, "wins": 5, "losses": 3, "net": 120, "bestWin": 75, "perfects": 1 },
     "merchantStocks": {},
+    "settlementReceiptsV145": [],
+    "worldRewardReceiptsV145": [],
     "worldV14": {
       "discoveredRegions": ["emberwood"],
       "contracts": { "wolves": 6, "resources": 5, "elites": 2, "futureBeasts": 4 },

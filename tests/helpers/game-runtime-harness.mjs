@@ -19,11 +19,30 @@ const bootAnchor =
 // bundled with, or served by the production game.
 const testBridgeSource = String.raw`
 if (globalThis.__ASHFALL_TEST_MODE__) {
-  broadcastSnapshot = () => { snapshot = structuredCloneSafe(room); };
+  let testTransportSequence = 0;
+  const testOutbox = [];
+  send = message => {
+    const event = {
+      ...structuredCloneSafe(message),
+      _transportId: peerId + ':test:' + (++testTransportSequence),
+      _senderPeerId: peerId,
+    };
+    rememberTransportEventV141(event._transportId);
+    testOutbox.push(event);
+    return event;
+  };
+  broadcastSnapshot = () => {
+    if (isHost && room) {
+      room.stateVersionV146 = (Number.isSafeInteger(room.stateVersionV146) ? room.stateVersionV146 : 0) + 1;
+      send({ type: 'snapshot', stateVersion: room.stateVersionV146, room });
+    }
+    snapshot = structuredCloneSafe(room);
+  };
   renderAll = () => {};
   renderLobby = () => {};
   renderProfile = () => {};
-  persistProfile = () => {};
+  renderSavedCharacters = () => {};
+  flashSavedV131 = () => {};
   hide = () => {};
   show = () => {};
   toast = () => {};
@@ -31,15 +50,24 @@ if (globalThis.__ASHFALL_TEST_MODE__) {
   flowBannerV13 = () => {};
   beep = () => {};
   rollMerchantAfterHunt = () => {};
-  applySettlement = settlement => { lastSummary = structuredCloneSafe(settlement); };
+  showSummary = settlement => { lastSummary = structuredCloneSafe(settlement); };
 
-  globalThis.__ASHFALL_TEST_API__ = Object.freeze({
-    createSoloHunter(name = 'Route Tester', classId = 'warden') {
-      profile = newProfile(name, classId);
-      ensureProfileShape(profile);
-      isHost = true;
+  function createTestHunter(name, classId, role) {
+    profile = newProfile(name, classId);
+    ensureProfileShape(profile);
+    const stored = readProfileStorageV144();
+    if (!stored.ok) throw new Error('Unable to read test hunter storage.');
+    stored.profiles[profile.id] = profile;
+    if (!saveProfiles(stored.profiles, { expectedRaw: stored.raw })) throw new Error('Unable to persist the test hunter.');
+    isHost = role !== 'guest';
+    roomCode = 'TEST01';
+    bc = { close() {} };
+    room = null;
+    snapshot = null;
+    lastSummary = null;
+    if (role !== 'guest') {
       room = {
-        code: 'TEST01',
+        code: roomCode,
         hostPeerId: peerId,
         players: {},
         missionId: 'frontier',
@@ -50,21 +78,58 @@ if (globalThis.__ASHFALL_TEST_MODE__) {
         merchant: { active: false, misses: 0 }
       };
       room.players[peerId] = playerJoinPayload();
+      room.players[peerId].campX = 14;
+      room.players[peerId].campY = 15;
       snapshot = structuredCloneSafe(room);
+    }
+    testOutbox.length = 0;
+    return peerId;
+  }
+
+  globalThis.__ASHFALL_TEST_API__ = Object.freeze({
+    createSoloHunter(name = 'Route Tester', classId = 'warden') {
+      return createTestHunter(name, classId, 'host');
+    },
+    createGuestHunter(name = 'Guest Tester', classId = 'ranger') {
+      return createTestHunter(name, classId, 'guest');
+    },
+    loadStoredHunter(profileId, role = 'host') {
+      const stored = readProfileStorageV144();
+      profile = stored.ok ? stored.profiles[profileId] : null;
+      if (!profile) throw new Error('Stored hunter was not found.');
+      ensureProfileShape(profile);
+      isHost = role !== 'guest';
+      roomCode = 'TEST01';
+      bc = { close() {} };
+      room = null;
+      snapshot = null;
       lastSummary = null;
+      testOutbox.length = 0;
       return peerId;
     },
     readState() {
-      return structuredCloneSafe({ peerId, profile, room, snapshot, lastSummary });
+      return structuredCloneSafe({ peerId, profile, room, snapshot, lastSummary, isHost, roomCode });
     },
-    placeCampPlayer(x, y) {
-      const player = room?.players?.[peerId];
+    readSavedProfiles() {
+      return structuredCloneSafe(loadProfiles());
+    },
+    joinPayload() {
+      return structuredCloneSafe(playerJoinPayload());
+    },
+    receiveEvent(event) {
+      receiveTransportEventV141(structuredCloneSafe(event));
+    },
+    drainOutbox() {
+      return testOutbox.splice(0).map(structuredCloneSafe);
+    },
+    placeCampPlayer(x, y, playerId = peerId) {
+      const player = room?.players?.[playerId];
       if (!player) throw new Error('Create a solo hunter before placing the camp player.');
       player.campX = x;
       player.campY = y;
     },
-    placeWorldPlayer(x, y) {
-      const player = room?.players?.[peerId];
+    placeWorldPlayer(x, y, playerId = peerId) {
+      const player = room?.players?.[playerId];
       if (!player) throw new Error('Create a solo hunter before placing the world player.');
       player.worldX = x;
       player.worldY = y;
@@ -74,6 +139,74 @@ if (globalThis.__ASHFALL_TEST_MODE__) {
     },
     interactWorld(objectId, autoAttack = false) {
       return hostWorldInteractV141(peerId, objectId, autoAttack);
+    },
+    selectExpedition(missionId = 'frontier', delveId = null) {
+      if (!room || !isHost) throw new Error('Only a host room can select an expedition.');
+      room.missionId = missionId;
+      room.delveId = delveId;
+    },
+    toggleReady() {
+      return toggleReady();
+    },
+    launchExpedition() {
+      return launchExpedition();
+    },
+    patchRunLoot(playerId, patch) {
+      const player = room?.run?.players?.[playerId];
+      if (!player) throw new Error('Run player was not found.');
+      const next = structuredCloneSafe(patch);
+      for (const [key, value] of Object.entries(next)) {
+        if (value && typeof value === 'object' && !Array.isArray(value) && player.runLoot[key] && typeof player.runLoot[key] === 'object' && !Array.isArray(player.runLoot[key])) player.runLoot[key] = { ...player.runLoot[key], ...value };
+        else player.runLoot[key] = value;
+      }
+    },
+    finishCurrentStage() {
+      const run = room?.run;
+      if (!run) throw new Error('Launch a run before finishing a stage.');
+      run.enemies.forEach(enemy => { enemy.hp = 0; });
+      return onStageClear(run);
+    },
+    forceDelveComplete() {
+      const run = room?.run;
+      if (!run?.isDelve) throw new Error('Launch a Delve before forcing its final clear.');
+      run.depth = runDepthLimit(run);
+      run.enemies.forEach(enemy => { enemy.hp = 0; });
+      return onStageClear(run);
+    },
+    forceDeepHuntBossClear() {
+      const run = room?.run;
+      if (!run?.deepHunt?.active) throw new Error('Launch a Deep Hunt before forcing its boss clear.');
+      run.deepHunt.currentNode = { id: 'test-boss', type: 'boss', name: 'Direfang Den', canExtract: false };
+      run.deepHunt.history.push(structuredCloneSafe(run.deepHunt.currentNode));
+      run.deepHunt.bossRevealed = true;
+      run.depth = runDepthLimit(run);
+      run.enemies.forEach(enemy => { enemy.hp = 0; });
+      return onStageClear(run);
+    },
+    openExtractionWindow(safe = true) {
+      const run = room?.run;
+      if (!run?.deepHunt?.active) throw new Error('Launch a Deep Hunt before opening extraction.');
+      run.phase = 'choice';
+      run.cleared = true;
+      run.votes = {};
+      run.deepHunt.currentNode = { ...(run.deepHunt.currentNode || {}), canExtract: !!safe };
+      broadcastSnapshot();
+    },
+    vote(choice) {
+      if (isHost) return hostVote(peerId, choice);
+      return send({ type: 'vote', peerId, vote: choice });
+    },
+    leaveRoom() {
+      return leaveRoom(true);
+    },
+    returnFromSummary() {
+      return returnToCampFromSummaryV142();
+    },
+    craftHuntRecipe(recipeId) {
+      return craftHuntRecipeV131(recipeId);
+    },
+    retrySettlement() {
+      return commitPendingSettlementV145();
     },
     forcePartyWipe() {
       const run = room?.run;
@@ -93,13 +226,15 @@ function cloneIntoHostRealm(value) {
   return value == null ? value : JSON.parse(JSON.stringify(value));
 }
 
-function createMemoryStorage() {
-  const values = new Map();
+export function createMemoryStorage(initial = {}) {
+  const values = new Map(Object.entries(initial).map(([key, value]) => [String(key), String(value)]));
+  const failedKeys = new Set();
   return {
     getItem(key) {
       return values.has(String(key)) ? values.get(String(key)) : null;
     },
     setItem(key, value) {
+      if (failedKeys.has(String(key))) throw new Error(`Injected storage failure for ${String(key)}`);
       values.set(String(key), String(value));
     },
     removeItem(key) {
@@ -107,6 +242,15 @@ function createMemoryStorage() {
     },
     clear() {
       values.clear();
+    },
+    failWritesFor(key) {
+      failedKeys.add(String(key));
+    },
+    allowWritesFor(key) {
+      failedKeys.delete(String(key));
+    },
+    snapshot() {
+      return Object.fromEntries(values);
     },
   };
 }
@@ -151,7 +295,7 @@ function createCanvasContext() {
   );
 }
 
-function createBrowserShim() {
+function createBrowserShim(options = {}) {
   const context2d = createCanvasContext();
   const elements = new Map();
 
@@ -229,8 +373,8 @@ function createBrowserShim() {
     }
   }
 
-  const localStorage = createMemoryStorage();
-  const sessionStorage = createMemoryStorage();
+  const localStorage = options.localStorage || createMemoryStorage();
+  const sessionStorage = options.sessionStorage || createMemoryStorage();
   const document = {
     body: getElement("body"),
     activeElement: null,
@@ -263,16 +407,17 @@ function createDeterministicMath(seed = 0x14_00_142) {
   return deterministicMath;
 }
 
-function createVmContext() {
-  const browser = createBrowserShim();
+function createVmContext(options = {}) {
+  const browser = createBrowserShim(options);
   const noop = () => {};
   const sandbox = {
     __ASHFALL_TEST_MODE__: true,
     ...browser,
     crypto: webcrypto,
     performance,
-    Math: createDeterministicMath(),
+    Math: createDeterministicMath(options.seed),
     Date,
+    TextEncoder,
     console,
     setTimeout,
     clearTimeout,
@@ -306,7 +451,7 @@ function createVmContext() {
   return vm.createContext(sandbox);
 }
 
-export async function createGameRuntimeHarness() {
+export async function createGameRuntimeHarness(options = {}) {
   const [productionSource, ...supportSources] = await Promise.all([
     readFile(gameSourcePath, "utf8"),
     ...supportSourcePaths.map((sourcePath) => readFile(sourcePath, "utf8")),
@@ -320,7 +465,10 @@ export async function createGameRuntimeHarness() {
     bootAnchor,
     `${testBridgeSource}\n${bootAnchor}`,
   );
-  const context = createVmContext();
+  const localStorage = options.localStorage || createMemoryStorage();
+  const sessionStorage = options.sessionStorage || createMemoryStorage();
+  if (options.peerId) sessionStorage.setItem('ashfall_mp_peer_id', options.peerId);
+  const context = createVmContext({ localStorage, sessionStorage, seed: options.seed });
   supportSources.forEach((supportSource, index) => {
     vm.runInContext(supportSource, context, {
       filename: supportSourcePaths[index],
@@ -339,8 +487,26 @@ export async function createGameRuntimeHarness() {
     createSoloHunter(name, classId) {
       return api.createSoloHunter(name, classId);
     },
+    createGuestHunter(name, classId) {
+      return api.createGuestHunter(name, classId);
+    },
+    loadStoredHunter(profileId, { role = 'host' } = {}) {
+      return api.loadStoredHunter(profileId, role);
+    },
     readState() {
       return cloneIntoHostRealm(api.readState());
+    },
+    readSavedProfiles() {
+      return cloneIntoHostRealm(api.readSavedProfiles());
+    },
+    joinPayload() {
+      return cloneIntoHostRealm(api.joinPayload());
+    },
+    receiveEvent(event) {
+      api.receiveEvent(cloneIntoHostRealm(event));
+    },
+    drainOutbox() {
+      return cloneIntoHostRealm(api.drainOutbox());
     },
     placeCampPlayer(x, y) {
       api.placeCampPlayer(x, y);
@@ -357,5 +523,46 @@ export async function createGameRuntimeHarness() {
     forcePartyWipe() {
       return api.forcePartyWipe();
     },
+    selectExpedition(missionId, delveId) {
+      api.selectExpedition(missionId, delveId);
+    },
+    toggleReady() {
+      api.toggleReady();
+    },
+    launchExpedition() {
+      api.launchExpedition();
+    },
+    patchRunLoot(playerId, patch) {
+      api.patchRunLoot(playerId, cloneIntoHostRealm(patch));
+    },
+    finishCurrentStage() {
+      return api.finishCurrentStage();
+    },
+    forceDelveComplete() {
+      return api.forceDelveComplete();
+    },
+    forceDeepHuntBossClear() {
+      return api.forceDeepHuntBossClear();
+    },
+    openExtractionWindow({ safe = true } = {}) {
+      api.openExtractionWindow(safe);
+    },
+    vote(choice) {
+      return api.vote(choice);
+    },
+    leaveRoom() {
+      return api.leaveRoom();
+    },
+    returnFromSummary() {
+      return api.returnFromSummary();
+    },
+    craftHuntRecipe(recipeId) {
+      return cloneIntoHostRealm(api.craftHuntRecipe(recipeId));
+    },
+    retrySettlement() {
+      return api.retrySettlement();
+    },
+    localStorage,
+    sessionStorage,
   });
 }

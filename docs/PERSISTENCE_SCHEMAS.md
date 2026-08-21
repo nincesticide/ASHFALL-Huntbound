@@ -1,6 +1,6 @@
 # ASHFALL v0.14 Persistence and Runtime Schemas
 
-Status: **observed, informal schemas plus the implemented local backup contract**, audited against the canonical split source during the v0.14.x foundation checkpoint.
+Status: **observed, informal schemas plus implemented local backup, receipt, and retry contracts**, audited against the canonical split source during the v0.14.x foundation checkpoint.
 
 The current code uses JavaScript objects, not a formal schema library. The pseudo-TypeScript below records fields actually constructed, defaulted, read, or written by v0.14. Optional markers mean a field may be absent in an older save, a newly constructed object, or a particular item/run variant. It does not mean the field is safe to discard.
 
@@ -27,7 +27,9 @@ Storage behavior that matters:
 - Before implicit profile migration or any import/valid recovery merge, the exact current roster text is written to `ashfall_save_recovery_v1`. If that snapshot cannot be written, the live roster is not changed.
 - If the live roster is malformed, export downloads its raw bytes. An explicit restore of a valid automatic snapshot first preserves the malformed bytes under `ashfall_corrupt_quarantine_v1`.
 - `ensureProfileShape` remains the in-game mutating compatibility wrapper, but it delegates to the pure, idempotent `normalizeProfileV014` path covered by current, legacy, unknown-field, and all-class fixtures.
-- Party records are updated only in host-side `settleRun`; they are local records, not shared or authoritative leaderboards.
+- Each run now receives a local `runId`; each per-hunter result receives a `settlementId`. Applied settlement IDs and surface-resource receipt IDs are retained in bounded profile ledgers so ordinary duplicate delivery does not grant twice. A rejected local surface-resource write rolls back the grant and leaves the node gatherable.
+- A failed local settlement write rolls the profile back and leaves `room.run.pendingSettlementV145` available in `phase: "settlement_failed"` for an explicit retry. Generic and Huntforged crafting use the same mutate/write-or-rollback rule.
+- Party records are updated only in host-side `settleRun`; they are local records, not shared or authoritative leaderboards. A party-record write failure no longer aborts the profile settlement.
 
 ### Local export envelope v1
 
@@ -60,7 +62,7 @@ type MultiplayerEventRow = {
 
 Indexes cover `(room_code, id)` for cursor polling and `created_at` for expiry cleanup. The relay accepts `GET` and `POST`; clients have no delete endpoint. Rows older than two hours are removed during POST cleanup, limited to approximately once per minute per warm Worker isolate.
 
-This table is a temporary mailbox, not authoritative persistence. It has no account, membership, room secret, command schema, acknowledgement, settlement ledger, character record, or game-state checkpoint. The physical database resource and access policy are managed by the Sites control plane and are not stored in Git.
+This table is a temporary mailbox, not authoritative persistence. Client relay POSTs are serialized per active transport and non-OK responses degrade the connection indicator; host snapshots carry a monotonic room version and guests reject stale versions from the same host. These are ordering protections, not identity or authority. The relay still has no account, membership, room secret, command schema, durable acknowledgement, authoritative settlement ledger, character record, host migration, or game-state checkpoint. The physical database resource and access policy are managed by the Sites control plane and are not stored in Git.
 
 ## Observed profile collection
 
@@ -124,6 +126,8 @@ type ObservedProfile = {
   selectedTitle: string;
   wagerStats: ObservedWagerStats;
   merchantStocks: Record<VisitId, ObservedMerchantOffer[]>;
+  settlementReceiptsV145: string[]; // bounded to the newest 96 IDs
+  worldRewardReceiptsV145: string[]; // bounded to the newest 96 IDs
 };
 ```
 
@@ -136,6 +140,7 @@ type ObservedProfile = {
 - expanded lifetime counters;
 - ten-slot equipment plus null legacy keys;
 - every collection/map that older saves might lack.
+- bounded settlement and surface-resource receipt arrays used for local duplicate suppression.
 
 `worldV14` is lazy and only appears after `ensureWorldProfileV14` runs. There is no explicit “profile schema v14” discriminator.
 
@@ -380,6 +385,7 @@ Owners and anchors: `createRoom`, `broadcastSnapshot`, `onNetwork`, `buildWorldS
 type ObservedRoom = {
   code: string;
   hostPeerId: string;
+  stateVersionV146?: number;
   players: Record<PeerId, ObservedRoomPlayer>;
   missionId: string;
   delveId: string | null;
@@ -399,6 +405,7 @@ type ObservedRoom = {
     delveId: string;
     selectedBy: PeerId;
   } | null;
+  completedSettlementsV145?: Record<PeerId, ObservedSettlement>;
 };
 
 type ObservedSurfaceInstance = {
@@ -443,6 +450,8 @@ Owners and anchors: `launchExpedition`, `launchWorldSkirmishV14`, `createRunPlay
 
 ```ts
 type ObservedRun = {
+  runId: string;
+  runSchemaVersion: 1;
   missionId: string;
   isDelve?: boolean;
   delveId?: string | null;
@@ -459,8 +468,8 @@ type ObservedRun = {
   maxDepth?: number;
   round: number;
   totalRounds: number;
-  phase: "player" | "resolve" | "choice" | "path" | "ended";
-  result?: "clear" | "extract" | "wipe";
+  phase: "player" | "resolve" | "choice" | "path" | "ended" | "settlement_failed";
+  result?: "clear" | "extract" | "wipe" | "pending";
   startedAt: number;
   campaignVersion: "v0.14.0";
 
@@ -497,15 +506,21 @@ type ObservedRun = {
   bossStage?: boolean;
   bossIntroRound?: number;
   surfaceCombatV142?: boolean;
+  pendingSettlementV145?: {
+    success: boolean;
+    label: string;
+    settlementRows: Array<{ peerId: PeerId; settlement: ObservedSettlement }>;
+  };
 };
 ```
 
-`campaignVersion` is an observed content label, not a run schema version. Runs are not checkpointed to durable storage.
+`runSchemaVersion` identifies the current in-memory run shape, while `campaignVersion` remains its content-facing label. Runs and pending settlement rows are not checkpointed to durable storage; losing the browser host still loses this retry state.
 
 ### Observed Deep Hunt state
 
 ```ts
 type ObservedDeepHunt = {
+  active: true;
   cfg: {
     active: true;
     hardCap: number;
@@ -661,12 +676,16 @@ Owner/anchors: host `settleRun` constructs; local `applySettlement` consumes.
 
 ```ts
 type ObservedSettlement = {
+  settlementId: string; // settlement:<runId>:<peerId>
+  settlementVersion: 1;
+  outcome: "clear" | "extract" | "wipe";
   success: boolean;
   label: string;
   mission: string;
   missionId: string;
   isDelve: boolean;
   isWorldSkirmish: boolean;
+  surfaceClear: boolean;
   worldEncounter: object | null;
   delveId: string | null;
   depth: number;
@@ -720,29 +739,35 @@ type ObservedSettlement = {
 };
 ```
 
-Settlement is not stored as an independent record. The most recent object is held in memory as `lastSummary`, while `applySettlement` folds it directly into the profile and writes the profile collection.
+Settlement is not stored as an independent durable record. The host retains the current rows in `room.run.pendingSettlementV145` until its own local application succeeds, then exposes completed rows on the in-memory room snapshot for guest replay. `applySettlement` folds a result into the local profile and writes the profile collection; the bounded `settlementReceiptsV145` array makes repeat delivery a no-op while that ID remains retained.
 
-Critical observed gaps:
+Implemented local protections:
 
-- no `schemaVersion`, `settlementId`, `runId`, player/profile ID, content version, source revision, result hash, or signature;
-- no ledger of applied settlement IDs;
-- no atomic compare-and-swap against a profile revision;
-- no rollback record;
-- a duplicate accepted settlement event can reapply XP, currency, materials, items, counters, and other rewards.
+- `runId`, `runSchemaVersion`, `settlementId`, `settlementVersion`, and explicit `outcome` identify a local result;
+- profile mutation, receipt insertion, and the canonical roster write either complete together or roll back in memory;
+- a failed host profile write retains the same settlement rows for explicit retry instead of destroying the run;
+- repeat settlement and surface-resource delivery are suppressed by bounded local receipt ledgers; a failed local resource write rolls back the grant and preserves the node for retry.
+
+Remaining limits:
+
+- no authenticated player/profile binding, signature, content/rules version, profile revision, compare-and-swap, result hash, or server audit record;
+- receipt ledgers retain only the newest 96 IDs, so they are duplicate guards for the current local prototype rather than an unbounded authoritative ledger;
+- guest acknowledgement and durable host recovery are absent; completed and pending settlement rows are memory-only outside the receiving profile;
+- no production host migration or durable mid-run reconnect exists.
 
 ## Current authority boundaries
 
 | Mutation | Honest-client authority | Durable owner | Current validation |
 | --- | --- | --- | --- |
 | Create/select/normalize character | Local browser | Local browser | Shape defaults only; no authenticity. |
-| Equip/craft/salvage/enhance/wager/purchase | Local browser | Local browser | UI/function preconditions only. |
+| Equip/craft/salvage/enhance/wager/purchase | Local browser | Local browser | UI/function preconditions; generic and Huntforged crafting roll back if the profile write fails. |
 | Join payload stats | Joining client supplies; host trusts | None separately | No account/profile binding or signature. |
 | Camp/surface movement and interaction | Host browser | None | Host checks occupancy/range/state. |
 | Resource depletion and encounter/Delve selection | Host browser | Runtime only | Host checks current object and range. |
-| Resource/discovery permanent reward | Host emits; recipient applies | Recipient local profile | Message targeting plus local function checks. |
+| Resource/discovery permanent reward | Host emits; recipient applies | Recipient local profile | Message targeting plus bounded receipt suppression; local surface grants roll back and remain gatherable if persistence fails. |
 | Combat, AI, drops, votes, extraction | Host browser | Runtime only | Host rule functions in `game.js`. |
 | Settlement calculation | Host browser | Event only | Host code; no server verification. |
-| Settlement application | Each recipient browser | Recipient local profile | No idempotency or revision check. |
+| Settlement application | Each recipient browser | Recipient local profile | Bounded settlement receipt check plus local mutate/write rollback; no authenticated revision check. |
 | Party records | Host browser | Host `localStorage` | Names used as identity. |
 
 The private relay forwards opaque JSON. It does not change these authority boundaries.
@@ -759,12 +784,12 @@ The private relay forwards opaque JSON. It does not change these authority bound
 | Loadouts | Current `gear` map and older direct keys coexist informally. |
 | Score keys | Meaning is encoded into colon-delimited strings without a key schema. |
 | Companies | Display name is the grouping ID; weekly claim identity is string concatenation. |
-| Room/run | No protocol/schema version. `campaignVersion` is content-facing and does not cover shape. |
+| Room/run | Runs carry local `runSchemaVersion: 1`, but room/protocol/content/rules envelopes remain incomplete and runtime state is not durably checkpointed. |
 | Randomness | No stored seed or RNG cursor, so runs and item rolls cannot be reproduced. |
 | Time | Absolute millisecond timestamps have no clock source/version and runtime expiry is not checkpointed. |
 | Runtime vs presentation | Visual/animation timestamps are mixed into snapshot objects. |
-| Settlement | No unique identity or applied ledger; duplicate delivery is economically unsafe. |
-| Parse failure | Invalid JSON becomes an empty collection with no backup or user-visible recovery path. |
+| Settlement | Local IDs, bounded receipts, rollback, and retry are implemented; there is still no authenticated identity, profile revision/CAS, durable acknowledgement, or server ledger. |
+| Parse failure | Guarded storage exposes the failure and raw bytes, blocks normal overwrite, and supports explicit snapshot recovery/quarantine. |
 
 ## Safe extraction seams
 
@@ -774,7 +799,7 @@ The private relay forwards opaque JSON. It does not change these authority bound
 4. **Fixture-backed domain operations:** move equipment, crafting, economy, progression, and settlement mutations into pure functions with exact before/after fixtures.
 5. **Runtime schemas:** define `Room`, `SurfaceInstance`, `Run`, `RunPlayer`, `Enemy`, `Command`, and `Settlement` independently from the durable profile.
 6. **Deterministic services:** inject RNG, clock, and ID generation; record seed/content version and exclude presentation fields from state hashes.
-7. **Idempotent settlement:** assign a durable settlement ID and profile revision; apply once transactionally and record the application.
+7. **Idempotent settlement:** the local checkpoint now assigns run/settlement IDs, applies through bounded receipts, and rolls back/retries failed writes. Add authenticated profile revisions, durable acknowledgements, and a server-owned ledger before authoritative play.
 8. **Realm boundary:** keep legacy local characters playable offline but never silently treat editable local saves as authoritative online/ranked characters.
 
 ## Proposed future schema
@@ -824,7 +849,7 @@ The first local migration should wrap or version data without changing gameplay 
 4. Add explicit local schema/content versions and idempotent migrations while retaining the canonical key.
 5. Define command, room, surface, run, enemy, and settlement schemas plus protocol envelopes.
 6. Add deterministic seed/clock/ID services and golden run/settlement fixtures.
-7. Add settlement IDs, applied ledgers, revisions, and atomic application.
+7. Extend the implemented local settlement IDs, bounded receipts, and atomic application with authenticated revisions, durable acknowledgements, and server ownership.
 8. Add an explicit local-versus-online realm boundary before server-owned characters or economy.
 
 ## Acceptance criteria

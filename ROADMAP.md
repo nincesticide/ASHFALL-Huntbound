@@ -136,6 +136,17 @@ Scope:
 - Split the gameplay monolith subsystem-by-subsystem into simulation, content, rendering, UI, persistence, and networking boundaries.
 - Keep the self-contained bundled HTML as a generated QA/release artifact.
 
+Implemented in the current v0.14.x checkpoint:
+
+- Repaired the supported Hunt Board path so generated Deep Hunt plans enter their active branching/extraction flow.
+- Added ID-bearing, retryable local settlements with bounded receipt ledgers, exactly-once application inside the retained receipt window, and rollback when the canonical profile write fails.
+- Made generic and Huntforged crafting atomic with respect to the local profile write.
+- Added deterministic solo coverage from Delve/Deep Hunt launch through extraction or clear, Emberwatch return, crafting, persistence, and fresh reload.
+- Added deterministic multiplayer protocol coverage for host/guest join, readiness, launch, extraction, direct/final-snapshot settlement recovery, replay/reload rejection, stale snapshots, and extraction reevaluation after departure.
+- Serialized relay sends, non-OK degradation, monotonic snapshot rejection, and party-leave reevaluation now harden the browser-hosted transport pending broader protocol coverage.
+
+This checkpoint remains a free local/host-browser prototype. Production authentication, server-owned progression and simulation, host migration, and durable reconnect/checkpoint recovery remain online-gated; protocol hardening must not be described as authoritative online play.
+
 Exit criteria:
 
 - Existing v0.14 save fixtures load without loss of classes, gear, mastery, progression, or ten-slot equipment state.

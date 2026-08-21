@@ -25,7 +25,14 @@ The observed v0.14 implementation is recorded in [docs/SYSTEM_INVENTORY.md](docs
 - All six classes render distinct prone downed/fallen states derived from their canonical class sprite atlases.
 - Local hunter saves now support versioned JSON export, validated preview, non-destructive merge import, automatic pre-change recovery snapshots, and corrupt-byte quarantine without changing the canonical storage key.
 - Dependency-free fixtures exercise current v0.14 data, legacy three-slot armory migration, all six classes, unknown-field retention, storage failures, and recovery; executable route tests run the production game through North Gate, animal combat, resource collection, wipe/bonfire return, and Emberroot Cellar entry.
+- Deep Hunt plans now activate correctly when a supported Hunt Board expedition launches.
+- Run settlements carry stable run/settlement identities, apply through bounded local receipt ledgers, and remain retryable in the active run if the profile write fails. Surface resource grants also roll back on failure, remain gatherable, and reject duplicate receipts.
+- Generic and Huntforged crafting roll back their complete in-memory mutation when the canonical profile write fails.
+- Executable lifecycle coverage now follows a solo hunter through Delve settlement and bonfire return, Deep Hunt extraction or boss clear, Huntforged crafting, and a fresh-storage reload. Multiplayer protocol coverage runs host/guest join, readiness, launch, extraction, direct/final-snapshot settlement recovery, replay/reload rejection, stale-snapshot rejection, and extraction reevaluation after departure.
+- Transport hardening serializes relay POSTs, degrades cleanly on non-OK responses, rejects stale monotonic snapshots, and reevaluates combat, extraction choice, or wipe immediately when a hunter leaves.
 - The ChatGPT Site deployment adds an HTTP multiplayer relay for different browsers/devices; this split-source package retains the same-browser `BroadcastChannel` fast path and gracefully falls back when that relay endpoint is unavailable.
+
+These protections harden the free local/host-browser prototype; they do not add production authentication, server-owned characters, authoritative simulation, host migration, or durable mid-run reconnect. Those remain online-gated roadmap work.
 
 ## Source layout
 
@@ -37,6 +44,8 @@ The observed v0.14 implementation is recorded in [docs/SYSTEM_INVENTORY.md](docs
 - `assets/` — extracted sprites/textures previously embedded as base64
 - `site/` — versioned private Site shell, worker, relay, migration, and locked build; `public/game` is generated from root source
 - `scripts/materialize-site.mjs` — safely produces a complete deployable Site tree without creating a second editable game source
+- `tests/extraction-lifecycle.test.mjs` — deterministic solo Delve/Deep Hunt, settlement, crafting, bonfire-return, and reload coverage
+- `tests/multiplayer-protocol.test.mjs` — deterministic two-player settlement delivery/replay plus snapshot-order and party-departure coverage
 - `migration_manifest.json` — historical record of the original bundled-HTML extraction; its source-size fields are provenance, not live build metrics
 
 The source is intentionally only split at the asset/CSS/JS boundary for the first migration. Future refactors should split `game.js` subsystem-by-subsystem while keeping behavior and saves stable.
@@ -47,7 +56,7 @@ Run `node scripts/build-bundle.mjs` to regenerate the self-contained browser bui
 `release/ASHFALL_Huntbound_Alpha_v0.14.0_Open_World.html`. The bundle is generated
 directly from the split source and embeds all 57 canonical assets.
 
-Run `npm test` to check syntax, the stable save key and ten-slot definitions, current/legacy save compatibility, failure-safe import/recovery, executable golden-route behavior, critical source wiring, v0.14 asset integrity, release parity, and Site materialization. Run `npm run build` after changing split source or assets.
+Run `npm test` to check syntax, the stable save key and ten-slot definitions, current/legacy save compatibility, failure-safe import/recovery, executable golden routes, full solo extraction/crafting/reload behavior, multiplayer protocol behavior, critical source wiring, v0.14 asset integrity, release parity, and Site materialization. Individual lifecycle and protocol checks are available as `npm run test:lifecycle` and `npm run test:multiplayer`. Run `npm run build` after changing split source or assets.
 
 The exact-57 asset invariant intentionally freezes the canonical v0.14 manifest. A later milestone that adds art must update the manifest expectation and content version deliberately; it must not weaken the existing-file checks silently.
 
