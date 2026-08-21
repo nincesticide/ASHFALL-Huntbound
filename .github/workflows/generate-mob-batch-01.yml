@@ -1,5 +1,6 @@
 name: Generate mob sprite batch 01
 
+# Art-only branch automation. This workflow does not touch game authority or session code.
 on:
   workflow_dispatch:
   push:
