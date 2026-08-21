@@ -124,7 +124,7 @@ function openExtractionAndCollectCompletionEvents(party, lootByPeer) {
 
 test("an active host leave terminally clears the guest's stale field session", async () => {
   const party = await createTwoPlayerParty("host-leave");
-  const { guest, hostPeerId } = party;
+  const { guest, guestProfileId, hostPeerId } = party;
   readyAndLaunch(party);
   assert.ok(guest.readState().room?.run, "guest must begin in the active field");
 
@@ -138,6 +138,7 @@ test("an active host leave terminally clears the guest's stale field session", a
   assert.equal(closed.snapshot, null);
   assert.equal(closed.roomCode, null);
   assert.equal(closed.isHost, false);
+  assert.equal(closed.profile.id, guestProfileId, "room cleanup must preserve the local hunter");
 });
 
 test("host and guest ready, launch, extract, and settle exactly once across replay and reload", async () => {
