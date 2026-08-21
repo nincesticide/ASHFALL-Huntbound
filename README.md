@@ -1,14 +1,19 @@
-# ASHFALL — Huntbound
+# ASHFALL / Huntbound — v0.14.0 Open World
 
-Dark-fantasy browser RPG evolving into a hybrid open-world RPG with optional Delves and Deep Hunts.
+Canonical split-source development package for ASHFALL.
 
-Current canonical milestone: **v0.14.0 — Open World**.
+## v0.14 foundation
+- Emberwatch is the persistent hub.
+- The North Gate leads to Emberwood Lowlands surface exploration.
+- Surface mobs, elites, resources, contracts, caches, and Delve entrances coexist with the existing Hunt Board.
+- Deep Hunts and Delves preserve extraction gameplay.
+- Huntforged equipment retains the Tempered → Masterworked → Awakened identity path.
+- Existing localStorage character/save compatibility is preserved.
 
-Development goals:
-- persistent Emberwatch hub and surface exploration
-- quests, farming, elites, contracts, and resource gathering
-- optional high-risk Delves / Deep Hunts with extraction
-- Huntforged crafting and equipment identity
-- preserve existing classes, bosses, Codex, Hunter's Ascent, camp services, and save compatibility
+## Source layout
+- `index.html` — shell and UI markup
+- `css/game.css` — game UI and presentation
+- `js/game.js` — current gameplay source
+- `assets/` — extracted sprites/textures previously embedded as base64
 
-This repository is intended to become the canonical source for ongoing Codex/Work/Sites development.
+The source is intentionally only split at the asset/CSS/JS boundary for the first migration. Future refactors should split `game.js` subsystem-by-subsystem while keeping behavior and saves stable.
