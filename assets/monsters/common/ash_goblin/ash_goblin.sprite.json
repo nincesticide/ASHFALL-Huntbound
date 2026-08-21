@@ -1,0 +1,151 @@
+{
+  "schemaVersion": 2,
+  "id": "ash_goblin_approved_v1",
+  "enemyKinds": [
+    "goblin",
+    "gutterling"
+  ],
+  "displayName": "Ash Goblin",
+  "format": "png-atlas-v2",
+  "sourceReference": "Approved conversation art source; presentation board excluded from runtime package",
+  "atlas": "ash_goblin.atlas.png",
+  "frameWidth": 96,
+  "frameHeight": 96,
+  "columns": 6,
+  "rows": 24,
+  "rowOrder": [
+    "idle_south",
+    "idle_north",
+    "idle_east",
+    "idle_west",
+    "walk_south",
+    "walk_north",
+    "walk_east",
+    "walk_west",
+    "attack_south",
+    "attack_north",
+    "attack_east",
+    "attack_west",
+    "special_south",
+    "special_north",
+    "special_east",
+    "special_west",
+    "hit_south",
+    "hit_north",
+    "hit_east",
+    "hit_west",
+    "death_south",
+    "death_north",
+    "death_east",
+    "death_west"
+  ],
+  "directions": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "mirrorSideForWest": false,
+  "anchor": {
+    "x": 48,
+    "y": 87
+  },
+  "footprint": {
+    "width": 1,
+    "height": 1
+  },
+  "visualScale": 1.0,
+  "animations": {
+    "idle": {
+      "frames": 4,
+      "fps": 5,
+      "loop": true,
+      "rows": {
+        "south": 0,
+        "north": 1,
+        "east": 2,
+        "west": 3
+      },
+      "durationMs": 800
+    },
+    "walk": {
+      "frames": 6,
+      "fps": 10,
+      "loop": true,
+      "rows": {
+        "south": 4,
+        "north": 5,
+        "east": 6,
+        "west": 7
+      },
+      "durationMs": 600
+    },
+    "attack": {
+      "frames": 6,
+      "fps": 12,
+      "loop": false,
+      "rows": {
+        "south": 8,
+        "north": 9,
+        "east": 10,
+        "west": 11
+      },
+      "durationMs": 500,
+      "damageFrame": 4
+    },
+    "special": {
+      "frames": 6,
+      "fps": 10,
+      "loop": false,
+      "rows": {
+        "south": 12,
+        "north": 13,
+        "east": 14,
+        "west": 15
+      },
+      "durationMs": 600,
+      "eventFrame": 4
+    },
+    "hit": {
+      "frames": 3,
+      "fps": 12,
+      "loop": false,
+      "rows": {
+        "south": 16,
+        "north": 17,
+        "east": 18,
+        "west": 19
+      },
+      "durationMs": 250
+    },
+    "death": {
+      "frames": 6,
+      "fps": 8,
+      "loop": false,
+      "rows": {
+        "south": 20,
+        "north": 21,
+        "east": 22,
+        "west": 23
+      },
+      "durationMs": 750,
+      "holdFinalMs": 550
+    }
+  },
+  "mapping": {
+    "goblin": {
+      "attack": "attack",
+      "special": "special"
+    },
+    "gutterling": {
+      "attack": "attack",
+      "special": "special",
+      "note": "Temporary approved Ash Goblin visual; Gutter Bombardier mechanics are unchanged."
+    }
+  },
+  "fallback": "Existing procedural renderer",
+  "bossExclusions": [
+    "bossgoblin",
+    "The Gutter King"
+  ]
+}

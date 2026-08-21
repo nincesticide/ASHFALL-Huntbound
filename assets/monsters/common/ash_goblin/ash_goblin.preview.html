@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ASHFALL Approved Ash Goblin v1</title>
+<style>
+body{margin:0;background:#081018;color:#e9f0f8;font:14px ui-monospace,monospace}main{max-width:1100px;margin:20px auto;padding:18px}
+.controls{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}button,select{background:#142234;color:#e9f0f8;border:1px solid #3b5876;border-radius:6px;padding:8px}
+canvas{width:100%;max-width:960px;background:#111a24;border:1px solid #34506b;image-rendering:pixelated}
+.note{color:#a8b8ca;line-height:1.5}.ok{color:#7ed99f}</style></head>
+<body><main><h1>ASHFALL — APPROVED ASH GOBLIN v1</h1>
+<p class="note">Temporary visual mapping: <b>goblin</b> and <b>gutterling</b>. The Gutter King / <b>bossgoblin</b> is excluded.</p>
+<div class="controls"><label>Animation <select id="anim"><option>idle</option><option>walk</option><option>attack</option><option>special</option><option>hit</option><option>death</option></select></label>
+<label>Facing <select id="facing"><option>south</option><option>north</option><option>east</option><option>west</option></select></label>
+<button id="pause">Pause</button><button id="prev">Previous frame</button><button id="next">Next frame</button></div>
+<canvas id="c" width="960" height="430"></canvas>
+<p class="ok">96×96 transparent frames • bottom-center anchor (48,87) • attack impact frame 4 • special release frame 4</p>
+<script>
+const manifestUrl='ash_goblin.sprite.json',atlasUrl='ash_goblin.atlas.png';
+const c=document.getElementById('c'),ctx=c.getContext('2d'),anim=document.getElementById('anim'),facing=document.getElementById('facing');
+let meta,img=new Image(),paused=false,manual=0,start=performance.now();
+Promise.all([fetch(manifestUrl).then(r=>r.json()),new Promise((res,rej)=>{img.onload=res;img.onerror=rej;img.src=atlasUrl})]).then(([m])=>{meta=m;requestAnimationFrame(loop)});
+pause.onclick=()=>{paused=!paused;pause.textContent=paused?'Play':'Pause'};prev.onclick=()=>{paused=true;manual=Math.max(0,manual-1)};next.onclick=()=>{paused=true;manual++};
+function checker(x,y,w,h,s=12){for(let yy=y;yy<y+h;yy+=s)for(let xx=x;xx<x+w;xx+=s){ctx.fillStyle=((xx/s+yy/s)&1)?'#39424d':'#2c343e';ctx.fillRect(xx,yy,s,s)}}
+function drawOne(a,d,frame,x,y,scale){const spec=meta.animations[a],row=spec.rows[d],f=frame%spec.frames;ctx.imageSmoothingEnabled=false;ctx.drawImage(img,f*96,row*96,96,96,x,y,96*scale,96*scale);ctx.strokeStyle='#78d7ff';ctx.strokeRect(x+48*scale-2,y+87*scale-2,4,4);ctx.strokeStyle='rgba(120,215,255,.35)';ctx.beginPath();ctx.moveTo(x,y+87*scale);ctx.lineTo(x+96*scale,y+87*scale);ctx.stroke()}
+function loop(now){ctx.clearRect(0,0,c.width,c.height);checker(0,0,c.width,c.height);if(meta){const spec=meta.animations[anim.value],frame=paused?manual%spec.frames:Math.floor((now-start)/1000*spec.fps)%spec.frames;drawOne(anim.value,facing.value,frame,80,35,3);drawOne(anim.value,facing.value,frame,480,90,1);drawOne(anim.value,facing.value,frame,650,70,2);ctx.fillStyle='#eef5ff';ctx.font='16px monospace';ctx.fillText(`${anim.value.toUpperCase()} • ${facing.value.toUpperCase()} • frame ${frame+1}/${spec.frames} • ${spec.fps} fps`,50,405)}requestAnimationFrame(loop)}
+</script></main></body></html>

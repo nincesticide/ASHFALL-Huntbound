@@ -1,0 +1,44 @@
+{
+  "source": "approved conversation asset/a_wide_high_resolution_game_asset_sheet_sprite.png",
+  "sourceSize": [
+    1536,
+    1024
+  ],
+  "grid": {
+    "animationX": {
+      "idle": [86, 322],
+      "walk": [322, 568],
+      "attack": [568, 832],
+      "special": [832, 1062],
+      "hit": [1062, 1279],
+      "death": [1279, 1524]
+    },
+    "directionY": {
+      "south": [160, 260],
+      "north": [260, 360],
+      "east": [360, 461],
+      "west": [461, 564]
+    }
+  },
+  "actualSourcePoseCounts": {
+    "idle": 4,
+    "walk": 5,
+    "attack": 5,
+    "special": 5,
+    "hit": 3,
+    "death": 4
+  },
+  "normalizedOutputCounts": {
+    "idle": 4,
+    "walk": 6,
+    "attack": 6,
+    "special": 6,
+    "hit": 3,
+    "death": 6
+  },
+  "notes": [
+    "West output uses the approved east/side frames mirrored for consistency.",
+    "Missing presentation-board in-betweens were normalized by repeating coherent approved poses; no low-detail vector art is used.",
+    "Board background, labels, borders and grid were removed to transparency."
+  ]
+}
