@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "batch": "02",
+  "zone": "hollow",
+  "status": "generator-ready",
+  "frame": {
+    "width": 64,
+    "height": 64,
+    "columns": 6
+  },
+  "directions": ["south", "side", "north"],
+  "mirrorSideForWest": true,
+  "animations": {
+    "idle": {"frames": 6, "fps": 5, "loop": true},
+    "walk": {"frames": 6, "fps": 10, "loop": true},
+    "attack": {"frames": 6, "fps": 12, "loop": false, "damageFrame": 4},
+    "special": {"frames": 6, "fps": 10, "loop": false, "eventFrame": 4},
+    "hit": {"frames": 6, "fps": 12, "loop": false},
+    "death": {"frames": 6, "fps": 8, "loop": false}
+  },
+  "assets": [
+    {
+      "enemyKind": "bonearcher",
+      "spriteId": "bone_archer",
+      "name": "Bone Archer",
+      "rig": "undead_humanoid",
+      "basic": "bone_arrow",
+      "special": "bone_volley",
+      "atlas": "assets/monsters/common/bone_archer/bone_archer.atlas.svg",
+      "metadata": "assets/monsters/common/bone_archer/bone_archer.sprite.json"
+    },
+    {
+      "enemyKind": "gravehusk",
+      "spriteId": "grave_husk",
+      "name": "Grave Husk",
+      "rig": "brute",
+      "basic": "corpse_slam",
+      "special": "grave_burst",
+      "atlas": "assets/monsters/common/grave_husk/grave_husk.atlas.svg",
+      "metadata": "assets/monsters/common/grave_husk/grave_husk.sprite.json"
+    },
+    {
+      "enemyKind": "skeleton",
+      "spriteId": "restless_dead",
+      "name": "Restless Dead",
+      "rig": "undead_humanoid",
+      "basic": "rusted_slash",
+      "special": "grave_lunge",
+      "atlas": "assets/monsters/common/restless_dead/restless_dead.atlas.svg",
+      "metadata": "assets/monsters/common/restless_dead/restless_dead.sprite.json"
+    }
+  ]
+}

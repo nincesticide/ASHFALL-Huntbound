@@ -1,0 +1,30 @@
+{
+  "id": "gloam_spider",
+  "format": "svg-atlas-v1",
+  "frameWidth": 64,
+  "frameHeight": 64,
+  "columns": 6,
+  "rows": 18,
+  "directions": ["south", "side", "north"],
+  "mirrorSideForWest": true,
+  "rowOrder": [
+    "idle_south", "idle_side", "idle_north",
+    "walk_south", "walk_side", "walk_north",
+    "attack_south", "attack_side", "attack_north",
+    "special_south", "special_side", "special_north",
+    "hit_south", "hit_side", "hit_north",
+    "death_south", "death_side", "death_north"
+  ],
+  "animations": {
+    "idle": {"frames": 6, "fps": 5, "loop": true, "rows": {"south": 0, "side": 1, "north": 2}},
+    "walk": {"frames": 6, "fps": 10, "loop": true, "rows": {"south": 3, "side": 4, "north": 5}},
+    "attack": {"frames": 6, "fps": 12, "loop": false, "damageFrame": 4, "rows": {"south": 6, "side": 7, "north": 8}},
+    "special": {"frames": 6, "fps": 10, "loop": false, "eventFrame": 4, "rows": {"south": 9, "side": 10, "north": 11}},
+    "hit": {"frames": 6, "fps": 12, "loop": false, "rows": {"south": 12, "side": 13, "north": 14}},
+    "death": {"frames": 6, "fps": 8, "loop": false, "rows": {"south": 15, "side": 16, "north": 17}}
+  },
+  "anchor": {"x": 32, "y": 55},
+  "footprint": {"width": 1, "height": 1},
+  "source": "gloam_spider.atlas.svg",
+  "status": "pilot-production-rig"
+}

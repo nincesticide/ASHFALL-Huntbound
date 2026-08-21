@@ -1,0 +1,53 @@
+name: Generate mob sprite batch 01
+
+# Art-only branch automation. This workflow does not touch game authority or session code.
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - art/mob-sprites-v1
+    paths:
+      - tools/generate-mob-batch-01.js
+      - .github/workflows/generate-mob-batch-01.yml
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out art branch
+        uses: actions/checkout@v4
+        with:
+          ref: art/mob-sprites-v1
+          fetch-depth: 0
+
+      - name: Generate animation-ready standard mob assets
+        run: node tools/generate-mob-batch-01.js
+
+      - name: Validate generated JSON and SVG files
+        run: |
+          node -e "for (const f of require('fs').readdirSync('assets/monsters/common')) {}"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          for p in Path('assets/monsters').rglob('*.json'):
+              json.loads(p.read_text())
+          for p in Path('assets/monsters').rglob('*.svg'):
+              ET.parse(p)
+          print('Validated generated monster manifests and SVG atlases.')
+          PY
+
+      - name: Commit generated assets
+        run: |
+          git config user.name "ashfall-art-bot"
+          git config user.email "ashfall-art-bot@users.noreply.github.com"
+          git add assets/monsters
+          if git diff --cached --quiet; then
+            echo "Generated assets are already current."
+          else
+            git commit -m "Generate mob sprite Batch 01 [skip ci]"
+            git push origin HEAD:art/mob-sprites-v1
+          fi

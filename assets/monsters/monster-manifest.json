@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "branch": "art/mob-sprites-v1",
+  "bossAssets": {
+    "policy": "existing; do not replace",
+    "direfangFrame": [96, 96],
+    "otherBossFrame": [229, 229]
+  },
+  "defaults": {
+    "directions": ["south", "west", "east", "north"],
+    "footprint": {"width": 1, "height": 1},
+    "animations": {
+      "idle": {"frames": 4, "fps": 5, "loop": true},
+      "move": {"frames": 6, "fps": 9, "loop": true},
+      "attack": {"frames": 6, "fps": 11, "loop": false, "eventFrame": 4},
+      "hit": {"frames": 2, "fps": 10, "loop": false},
+      "death": {"frames": 6, "fps": 8, "loop": false, "directions": ["south"]}
+    }
+  },
+  "mobs": [
+    {"id":"wolf","displayName":"Road Wolf","zone":"frontier","rig":"quadruped","status":"planned","frame":[64,64],"anchor":[32,56]},
+    {"id":"emberboar","displayName":"Emberback Boar","zone":"frontier","rig":"quadruped_brute","status":"planned","frame":[64,64],"anchor":[32,56]},
+    {"id":"thornling","displayName":"Briar Thornling","zone":"frontier","rig":"plant_humanoid","status":"planned","frame":[64,64],"anchor":[32,56]},
+    {"id":"spider","displayName":"Gloam Spider","zone":"frontier","rig":"arachnid","status":"planned","frame":[64,64],"anchor":[32,56]},
+    {"id":"gutterling","displayName":"Gutter Bombardier","zone":"hollow","rig":"goblin_ranged","status":"planned","frame":[64,64],"anchor":[32,56]},
+    {"id":"bonearcher","displayName":"Bone Archer","zone":"hollow","rig":"undead_ranged","status":"planned","frame":[64,64],"anchor":[32,56]},
+    {"id":"gravehusk","displayName":"Grave Husk","zone":"hollow","rig":"undead_brute","status":"planned","frame":[96,96],"anchor":[48,84]},
+    {"id":"skeleton","displayName":"Restless Dead","zone":"hollow","rig":"undead_melee","status":"planned","frame":[64,64],"anchor":[32,56]},
+    {"id":"fenstalker","displayName":"Fen Stalker","zone":"gloam","rig":"quadruped_stalker","status":"planned","frame":[64,64],"anchor":[32,56]},
+    {"id":"sporeling","displayName":"Sporeling","zone":"gloam","rig":"fungal_small","status":"planned","frame":[64,64],"anchor":[32,56]},
+    {"id":"bogwitch","displayName":"Bog Witch","zone":"gloam","rig":"caster_humanoid","status":"planned","frame":[64,64],"anchor":[32,56]},
+    {"id":"slime","displayName":"Bog Slime","zone":"gloam","rig":"ooze","status":"planned","frame":[64,64],"anchor":[32,56]},
+    {"id":"ashguard","displayName":"Ashbound Guard","zone":"keep","rig":"armored_humanoid","status":"planned","frame":[64,64],"anchor":[32,56]},
+    {"id":"cinderhound","displayName":"Cinder Hound","zone":"keep","rig":"quadruped","status":"planned","frame":[64,64],"anchor":[32,56]},
+    {"id":"banneret","displayName":"Ashbound Banneret","zone":"keep","rig":"armored_support","status":"planned","frame":[64,64],"anchor":[32,56]},
+    {"id":"knight","displayName":"Hollow Knight","zone":"keep","rig":"armored_humanoid","status":"planned","frame":[64,64],"anchor":[32,56]},
+    {"id":"icecrawler","displayName":"Ice Crawler","zone":"frost","rig":"crawler","status":"planned","frame":[64,64],"anchor":[32,56]},
+    {"id":"frostseer","displayName":"Frostseer","zone":"frost","rig":"caster_humanoid","status":"planned","frame":[64,64],"anchor":[32,56]},
+    {"id":"crystalbeast","displayName":"Crystal Beast","zone":"frost","rig":"crystal_quadruped","status":"planned","frame":[96,96],"anchor":[48,84]},
+    {"id":"drake","displayName":"Pale Drake","zone":"frost","rig":"winged_beast","status":"planned","frame":[96,96],"anchor":[48,84]},
+    {"id":"voidling","displayName":"Voidling","zone":"rift","rig":"aberration_small","status":"planned","frame":[64,64],"anchor":[32,56]},
+    {"id":"chorister","displayName":"Rift Chorister","zone":"rift","rig":"caster_humanoid","status":"planned","frame":[64,64],"anchor":[32,56]},
+    {"id":"riftreaver","displayName":"Rift Reaver","zone":"rift","rig":"armored_aberration","status":"planned","frame":[96,96],"anchor":[48,84]},
+    {"id":"wraith","displayName":"Bell Wraith","zone":"rift","rig":"spectral","status":"planned","frame":[64,64],"anchor":[32,56]},
+    {"id":"mawspawn","displayName":"Maw Spawn","zone":"worldeater","rig":"aberrant_spawn","status":"planned","frame":[64,64],"anchor":[32,56]},
+    {"id":"riftmauler","displayName":"Rift Mauler","zone":"worldeater","rig":"aberrant_brute","status":"planned","frame":[96,96],"anchor":[48,84]},
+    {"id":"abyssseer","displayName":"Abyss Seer","zone":"worldeater","rig":"caster_aberration","status":"planned","frame":[64,64],"anchor":[32,56]},
+    {"id":"worldeater","displayName":"World Eater Spawn","zone":"worldeater","rig":"siege_spawn","status":"planned","frame":[96,96],"anchor":[48,84]},
+    {"id":"goblin","displayName":"Ash Goblin","zone":"crossover","rig":"goblin_melee","status":"planned","frame":[64,64],"anchor":[32,56]},
+    {"id":"cultist","displayName":"Cinder Cultist","zone":"crossover","rig":"caster_humanoid","status":"planned","frame":[64,64],"anchor":[32,56]},
+    {"id":"golem","displayName":"Runestone Golem","zone":"crossover","rig":"golem_brute","status":"planned","frame":[96,96],"anchor":[48,84]}
+  ],
+  "eliteOverlays": [
+    {"id":"frenzied","status":"planned","description":"Ember veins, hot eyes, red trail"},
+    {"id":"armored","status":"planned","description":"Armor plates and defensive impact FX"},
+    {"id":"vampiric","status":"planned","description":"Crimson mist and lifesteal stream"},
+    {"id":"golden","status":"planned","description":"Golden Quarry rim light and sparkle trail"},
+    {"id":"nemesis_rank_1","status":"planned"},
+    {"id":"nemesis_rank_2","status":"planned"},
+    {"id":"nemesis_rank_3","status":"planned"},
+    {"id":"nemesis_rank_4","status":"planned"}
+  ],
+  "lieutenantSkins": [
+    {"id":"cinderback_matriarch","parent":"emberboar","status":"planned"},
+    {"id":"keeper_of_the_ossuary","parent":"gravehusk","status":"planned"},
+    {"id":"the_fen_hexer","parent":"bogwitch","status":"planned"},
+    {"id":"captain_of_the_last_banner","parent":"banneret","status":"planned"},
+    {"id":"shardhide_ancient","parent":"crystalbeast","status":"planned"},
+    {"id":"bell_reaver_exarch","parent":"riftreaver","status":"planned"},
+    {"id":"herald_of_the_maw","parent":"riftmauler","status":"planned"}
+  ]
+}
