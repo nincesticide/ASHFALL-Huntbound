@@ -50,13 +50,20 @@
       <div class="levelup-banner-v11" id="levelUpBannerV11"><div><div class="levelup-kicker">HUNTER ASCENDANT</div><div class="levelup-number" id="levelUpNumberV11">2</div><div class="levelup-title">LEVEL UP</div><div class="levelup-sub" id="levelUpSubV11">New power unlocked.</div></div></div>
       <div class="combat-hud-v11 camp" id="combatHudV11"><div class="v11-core"><div class="v11-avatar" id="v11Avatar">◆</div><div><div class="v11-name" id="v11HudName">No Hunter</div><div class="v11-meta" id="v11HudMeta">Choose a hunter</div></div><div class="v11-rating"><b id="v11HudGR">0</b><span>GEAR</span></div></div><div class="v11-hbar"><span>HP</span><div class="bar"><div class="fill hpfill" id="v11HpFill"></div></div><strong id="v11HpText">—</strong></div><div class="v11-hbar"><span id="v11ResLabel">RES</span><div class="bar"><div class="fill resfill" id="v11ResFill"></div></div><strong id="v11ResText">—</strong></div><div class="v11-hbar v11-xp"><span>XP</span><div class="bar"><div class="fill xpfill" id="v11XpFill"></div></div><strong id="v11XpText">—</strong></div><div class="v11-status" id="v11Status"></div><div class="v11-threat safe" id="v11Threat">EMBERWATCH — SAFE</div></div>
       <div id="skillTooltip" class="skill-tooltip" role="tooltip"></div>
+      <div class="hud-controls-v141" id="hudControlsV141" aria-label="HUD panels">
+        <button type="button" data-hud-toggle="party" aria-pressed="true">Party</button>
+        <button type="button" data-hud-toggle="intel" aria-pressed="true">Map</button>
+        <button type="button" data-hud-toggle="meters" aria-pressed="false">Meters</button>
+        <button type="button" data-hud-toggle="loot" aria-pressed="false">Loot</button>
+        <button type="button" data-hud-toggle="log" aria-pressed="false">Log</button>
+      </div>
 
       <div class="overlay show" id="titleOverlay">
         <div class="card">
           <h1>ASHFALL</h1>
           <div class="sub">A dark-fantasy open-world hunt RPG. Explore Emberwatch and the frontier, farm surface threats, complete contracts, discover Delves, then descend into high-risk Deep Hunts for boss parts and Huntforged power.</div>
           <div class="notice section">
-            <b>Multiplayer Alpha:</b> this build uses browser-to-browser tab networking through <b>BroadcastChannel</b>. Open this exact game link in two or more tabs/windows, create a room in one, then join the room code in the others. It is real shared game state on this browser, but remote-device internet multiplayer needs the server backend we build next.
+            <b>Multiplayer Alpha:</b> create a room, then share its code with up to three other hunters. The host remains authoritative for movement, encounters, resources, Delves, combat, and extraction. A private Site relay connects different browsers/devices; same-browser tabs also use a low-latency local fast path.
           </div>
 
           <div class="section">
@@ -253,7 +260,7 @@
       </div>
     </div>
 
-    <div class="side">
+    <div class="side floating-hud-v141">
       <div id="hudDockV132" class="hud-dock-v132"></div>
       <div class="panel hunter-panel-v132">
         <div class="ptitle"><span>Your Hunter</span><span class="tiny" id="classLabel">—</span></div>
@@ -268,24 +275,24 @@
         </div>
       </div>
 
-      <div class="panel">
+      <div class="panel hud-drawer-v141 is-open" data-hud-panel="party">
         <div class="ptitle"><span>Party</span><span class="tiny" id="partyCount">0/4</span></div>
         <div id="partyList" class="party"></div>
       </div>
-      <div class="panel meterpanel">
+      <div class="panel meterpanel hud-drawer-v141" data-hud-panel="meters">
         <div class="ptitle"><span><span class="live-dot"></span>Combat Meters</span><span class="tiny" id="meterClock">LIVE</span></div>
         <div class="meter-tabs"><button id="meterDamageBtn">Damage</button><button id="meterHealBtn">Healing</button></div>
         <div id="damageMeterRows" class="meterrows"></div>
         <div id="combatFeedRows" class="combat-feed"></div>
       </div>
 
-      <div class="panel">
+      <div class="panel hud-drawer-v141" data-hud-panel="loot">
         <div class="ptitle"><span>Run Loot</span><span class="tiny">1 secure slot</span></div>
         <div class="small">Gold: <span class="gold" id="runGold">0</span> • Common mats: <span id="runCommon">0</span> • Rare mats: <span id="runRare">0</span></div>
         <div id="runLoot" class="lootlist" style="margin-top:6px"></div>
       </div>
 
-      <div class="panel">
+      <div class="panel actions-panel-v141">
         <div class="ptitle">Actions</div>
         <div class="tiny" id="actionHint">Join a room to begin.</div>
         <div id="targetInfo" class="targetpanel">Target: automatic nearest enemy. Click an enemy to focus it.</div><div id="partPanel" class="partpanel"></div>
@@ -307,13 +314,13 @@
         <div class="action-help">Hover an action for live damage, healing, range, cost, and effects.</div>
       </div>
 
-      <div class="panel">
+      <div class="panel hud-drawer-v141 intel-panel-v141 is-open" data-hud-panel="intel">
         <div class="ptitle"><span>Hunt Intel</span><span class="tiny">LIVE</span></div>
-        <div class="minimap-wrap" style="display:none"><canvas id="minimap" class="minimap" width="300" height="180"></canvas></div>
+        <div class="minimap-wrap"><canvas id="minimap" class="minimap" width="300" height="180"></canvas></div>
         <div id="objectiveLines" class="objective-lines">Explore camp and choose a hunt.</div>
       </div>
 
-      <div class="panel full">
+      <div class="panel full hud-drawer-v141" data-hud-panel="log">
         <div class="ptitle">Expedition Log</div>
         <div id="log" class="log"></div>
       </div>
