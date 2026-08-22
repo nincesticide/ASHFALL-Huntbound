@@ -211,3 +211,26 @@ test("the private room client uses authenticated sessions, heartbeat leases, and
     /crypto\.getRandomValues\(new Uint8Array\(6\)\)/,
   );
 });
+
+test("every inline event handler is reachable from the global scope", () => {
+  // game.js runs inside an IIFE, so a function referenced by an inline onclick=
+  // only resolves if it was also assigned to window. Anything missing throws
+  // ReferenceError the moment a player clicks the control.
+  const exported = new Set(
+    [...gameSource.matchAll(/window\.([A-Za-z0-9_$]+)\s*=/g)].map((match) => match[1]),
+  );
+  const referenced = new Set();
+  for (const source of [gameSource, indexSource]) {
+    for (const match of source.matchAll(
+      /\bon(?:click|change|input|submit|keyup|keydown)\s*=\s*["']([A-Za-z0-9_$]+)\s*\(/g,
+    )) {
+      referenced.add(match[1]);
+    }
+  }
+  const unreachable = [...referenced].filter((name) => !exported.has(name)).sort();
+  assert.deepEqual(
+    unreachable,
+    [],
+    `inline handlers missing a window export: ${unreachable.join(", ")}`,
+  );
+});
