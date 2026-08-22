@@ -3717,6 +3717,76 @@ function drawRunPlayer(p){
   ctx.globalAlpha=1
 }
 
+/* ===== approved Road Wolf sprite v1 =====
+ * Visual-only renderer override for the standard `wolf` enemy kind.
+ * Never applies to `direwolf` / Direfang Alpha, which stays on its boss atlas.
+ */
+const APPROVED_WOLF_ATLAS_V1=new Image();
+APPROVED_WOLF_ATLAS_V1.decoding='async';
+APPROVED_WOLF_ATLAS_V1.src='assets/monsters/common/road_wolf/road_wolf.atlas.png';
+let approvedWolfAtlasLoadedV1=false;
+APPROVED_WOLF_ATLAS_V1.onload=()=>approvedWolfAtlasLoadedV1=true;
+APPROVED_WOLF_ATLAS_V1.onerror=()=>approvedWolfAtlasLoadedV1=false;
+const APPROVED_WOLF_CELL_W_V1=128,APPROVED_WOLF_CELL_H_V1=96;
+const APPROVED_WOLF_ROWS_V1={
+  idle:{south:0,east:1,north:2,frames:4,fps:5,loop:true},
+  walk:{south:3,east:4,north:5,frames:6,fps:10,loop:true},
+  attack:{south:6,east:7,north:8,frames:6,fps:12,loop:false,duration:520},
+  hit:{south:9,east:10,north:11,frames:3,fps:12,loop:false,duration:250},
+  death:{south:12,east:13,north:14,frames:6,fps:8,loop:false,duration:760}
+};
+const approvedWolfMotionV1=new Map();
+function approvedWolfFacingV1(dx,dy,fallback='south'){
+  if(Math.abs(dx)>Math.abs(dy))return dx>0?'east':dx<0?'west':fallback;
+  if(dy!==0)return dy>0?'south':'north';
+  return fallback
+}
+function approvedWolfStateV1(e,now=performance.now()){
+  const key=String(e.id||`${e.kind}:${e.x}:${e.y}`);
+  let s=approvedWolfMotionV1.get(key);
+  if(!s){
+    s={fromX:e.x,fromY:e.y,targetX:e.x,targetY:e.y,start:now,duration:1,walkEpoch:now,facing:e.facing||'south'};
+    approvedWolfMotionV1.set(key,s)
+  }
+  const oldT=clamp((now-s.start)/Math.max(1,s.duration),0,1);
+  const oldEase=oldT*oldT*(3-2*oldT);
+  const currentX=s.fromX+(s.targetX-s.fromX)*oldEase,currentY=s.fromY+(s.targetY-s.fromY)*oldEase;
+  if(e.x!==s.targetX||e.y!==s.targetY){
+    const dx=e.x-s.targetX,dy=e.y-s.targetY;
+    s.fromX=currentX;s.fromY=currentY;s.targetX=e.x;s.targetY=e.y;s.start=now;s.duration=245;s.walkEpoch=now;
+    s.facing=approvedWolfFacingV1(dx,dy,s.facing)
+  }
+  const attackAge=Date.now()-(e.attackFlash||0);
+  if(attackAge<700&&(e.attackDx||e.attackDy))s.facing=approvedWolfFacingV1(e.attackDx||0,e.attackDy||0,s.facing);
+  const t=clamp((now-s.start)/Math.max(1,s.duration),0,1),ease=t*t*(3-2*t),moving=t<1;
+  const x=s.fromX+(s.targetX-s.fromX)*ease,y=s.fromY+(s.targetY-s.fromY)*ease;
+  const hitAge=Date.now()-(e.hitFlash||0);
+  let animation='idle',elapsed=now;
+  if(hitAge<APPROVED_WOLF_ROWS_V1.hit.duration){animation='hit';elapsed=hitAge}
+  else if(attackAge<APPROVED_WOLF_ROWS_V1.attack.duration){animation='attack';elapsed=attackAge}
+  else if(moving){animation='walk';elapsed=now-s.walkEpoch}
+  const meta=APPROVED_WOLF_ROWS_V1[animation];
+  let frame;
+  if(meta.loop)frame=Math.floor((elapsed/1000)*meta.fps)%meta.frames;
+  else frame=Math.min(meta.frames-1,Math.max(0,Math.floor((elapsed/Math.max(1,meta.duration))*meta.frames)));
+  return{x,y,moving,facing:s.facing||'south',animation,frame}
+}
+function drawApprovedWolfBodyV1(e,xx,yy,now=performance.now()){
+  if(e.kind!=='wolf'||!approvedWolfAtlasLoadedV1||!APPROVED_WOLF_ATLAS_V1.complete)return false;
+  const state=approvedWolfStateV1(e,now),meta=APPROVED_WOLF_ROWS_V1[state.animation];
+  const face=state.facing==='west'?'east':state.facing,row=meta[face]??meta.south;
+  const sx=state.frame*APPROVED_WOLF_CELL_W_V1,sy=row*APPROVED_WOLF_CELL_H_V1,dw=84,dh=63;
+  const baseX=state.x*TILE+16,groundY=state.y*TILE+28;
+  const dx=Math.round(baseX-dw/2),dy=Math.round(groundY-58);
+  ctx.save();ctx.imageSmoothingEnabled=false;
+  if(state.facing==='west'){
+    ctx.translate(Math.round(baseX*2),0);ctx.scale(-1,1);
+    ctx.drawImage(APPROVED_WOLF_ATLAS_V1,sx,sy,APPROVED_WOLF_CELL_W_V1,APPROVED_WOLF_CELL_H_V1,dx,dy,dw,dh)
+  }else ctx.drawImage(APPROVED_WOLF_ATLAS_V1,sx,sy,APPROVED_WOLF_CELL_W_V1,APPROVED_WOLF_CELL_H_V1,dx,dy,dw,dh);
+  ctx.restore();
+  return true
+}
+
 function drawRegularMonsterPolished(e,now=performance.now()){
   if(drawZoneMonsterSpriteV09(e,now))return;
   const x=e.x*TILE,y=e.y*TILE,sec=now/1000,bob=Math.round(Math.sin(sec*3+(e.x+e.y))*.8),flash=Date.now()-(e.hitFlash||0)<125,attackAge=Date.now()-(e.attackFlash||0),attack=attackAge<180,lunge=attack?Math.sin(clamp(attackAge/180,0,1)*Math.PI)*5:0;
@@ -3725,7 +3795,7 @@ function drawRegularMonsterPolished(e,now=performance.now()){
   if(flash){ctx.shadowColor='#fff';ctx.shadowBlur=9}
   ctx.fillStyle='rgba(0,0,0,.34)';ctx.beginPath();ctx.ellipse(xx+16,y+27,11,3,0,0,Math.PI*2);ctx.fill();
   const k=e.kind;
-  if(k==='wolf'){
+  if(drawApprovedWolfBodyV1(e,xx,yy,now)){}else if(k==='wolf'){
     ctx.fillStyle='#5e5c59';ctx.fillRect(xx+6,yy+14,18,9);ctx.fillStyle='#77736c';ctx.fillRect(xx+18,yy+9,9,9);ctx.fillStyle='#444441';ctx.fillRect(xx+7,yy+21,4,6);ctx.fillRect(xx+19,yy+21,4,6);
     ctx.fillStyle='#54514d';ctx.beginPath();ctx.moveTo(xx+20,yy+10);ctx.lineTo(xx+22,yy+5);ctx.lineTo(xx+24,yy+11);ctx.fill();ctx.beginPath();ctx.moveTo(xx+24,yy+10);ctx.lineTo(xx+27,yy+6);ctx.lineTo(xx+27,yy+13);ctx.fill();
     ctx.fillStyle='#f0ca62';ctx.fillRect(xx+23,yy+12,2,2);ctx.fillStyle='#d6d3cb';ctx.fillRect(xx+27,yy+16,3,1);

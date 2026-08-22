@@ -16,7 +16,8 @@
     "test:replay": "node --test tests/deterministic-replay.test.mjs",
     "test:release": "node --test tests/release-bundle.test.mjs",
     "test:site": "node --test tests/site-runtime.test.mjs",
-    "test": "npm run test:source && npm run test:saves && npm run test:routes && npm run test:lifecycle && npm run test:multiplayer && npm run test:replay && npm run test:release && npm run test:site"
+    "test:art": "node --test tests/approved-road-wolf.test.mjs",
+    "test": "npm run test:source && npm run test:saves && npm run test:routes && npm run test:lifecycle && npm run test:multiplayer && npm run test:replay && npm run test:release && npm run test:site && npm run test:art"
   },
   "engines": {
     "node": ">=20"

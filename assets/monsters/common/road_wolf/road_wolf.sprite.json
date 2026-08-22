@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 2,
+  "id": "road_wolf_approved_v1",
+  "enemyKinds": ["wolf"],
+  "excludeKinds": ["direwolf"],
+  "format": "png-atlas-v2",
+  "atlas": "road_wolf.atlas.png",
+  "frameWidth": 128,
+  "frameHeight": 96,
+  "columns": 6,
+  "rows": 15,
+  "directions": ["south", "east", "north"],
+  "mirrorEastForWest": true,
+  "rowOrder": [
+    "idle_south", "idle_east", "idle_north",
+    "walk_south", "walk_east", "walk_north",
+    "attack_south", "attack_east", "attack_north",
+    "hit_south", "hit_east", "hit_north",
+    "death_south", "death_east", "death_north"
+  ],
+  "animations": {
+    "idle": { "frames": 4, "fps": 5, "loop": true, "rows": { "south": 0, "east": 1, "north": 2 } },
+    "walk": { "frames": 6, "fps": 10, "loop": true, "rows": { "south": 3, "east": 4, "north": 5 } },
+    "attack": { "frames": 6, "fps": 12, "loop": false, "eventFrame": 4, "rows": { "south": 6, "east": 7, "north": 8 }, "durationMs": 520 },
+    "hit": { "frames": 3, "fps": 12, "loop": false, "rows": { "south": 9, "east": 10, "north": 11 }, "durationMs": 250 },
+    "death": { "frames": 6, "fps": 8, "loop": false, "rows": { "south": 12, "east": 13, "north": 14 }, "durationMs": 760, "holdLastMs": 420 }
+  },
+  "anchor": { "x": 64, "y": 89 },
+  "logicalFootprint": { "width": 1, "height": 1 },
+  "render": { "width": 84, "height": 63, "offsetX": 0, "offsetY": -2, "imageSmoothing": false },
+  "sourceReference": "source/road_wolf_approved_sheet.png",
+  "notes": [
+    "Approved high-detail Road Wolf visual, normalized from the approved presentation board.",
+    "Frames were extracted by background segmentation of the board; scale 0.75, bottom-center anchored.",
+    "Applies to enemy kind `wolf` only. Direfang Alpha (`direwolf`) keeps its dedicated boss atlas.",
+    "West is horizontally mirrored from east.",
+    "Visual-only; combat authority, AI, saves, loot and progression are unchanged."
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "id": "road_wolf_approved_v1",
+  "enemyKinds": ["wolf"],
+  "excludeKinds": ["direwolf"],
+  "displayName": "Road Wolf",
+  "status": "approved-source-ready-for-normalization",
+  "source": "source/road_wolf_approved_sheet.png",
+  "visualStyle": {
+    "perspective": "three-quarter top-down",
+    "rendering": "high-detail dark-fantasy pixel art",
+    "features": [
+      "black-brown textured fur",
+      "pale eyes",
+      "scars and ember-red wounds",
+      "cold-blue rim light",
+      "blue-black grounded contact shadow",
+      "heavy predatory quadruped silhouette"
+    ]
+  },
+  "targetAtlas": {
+    "frameWidth": 128,
+    "frameHeight": 96,
+    "anchor": {"x": 64, "y": 89},
+    "logicalFootprint": {"width": 1, "height": 1},
+    "directions": ["south", "east", "north"],
+    "mirrorEastForWest": true,
+    "animations": {
+      "idle": {"frames": 4, "fps": 5, "loop": true},
+      "walk": {"frames": 6, "fps": 10, "loop": true},
+      "attack": {"frames": 6, "fps": 12, "loop": false, "eventFrame": 4},
+      "hit": {"frames": 3, "fps": 12, "loop": false},
+      "death": {"frames": 6, "fps": 8, "loop": false, "holdLastMs": 420}
+    }
+  },
+  "integration": {
+    "replaceOnly": ["wolf"],
+    "neverReplace": ["direwolf", "bossgoblin", "mire", "bossknight", "bossdrake", "riftboss", "worldeater"],
+    "visualOnly": true,
+    "preserveProceduralFallback": true,
+    "combatAuthorityUnchanged": true
+  },
+  "notes": [
+    "The included PNG is the approved presentation/source sheet, not a clean production atlas.",
+    "Codex must isolate frames, remove the board background and labels, normalize scale and ground line, then export a transparent atlas.",
+    "Direfang Alpha uses enemy kind direwolf and must remain on its existing boss atlas."
+  ]
+}
