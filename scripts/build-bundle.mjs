@@ -19,7 +19,11 @@ export async function buildBundleInMemory() {
     readFile(join(projectRoot, "js", "game.js"), "utf8"),
   ]);
 
-  const assetPattern = /assets\/asset_[0-9]+_[a-f0-9]+\.png/g;
+  // Canonical numbered assets, plus per-monster atlases under assets/monsters/.
+  // Without the second alternative a monster atlas stays an unresolved relative
+  // path in the single-file release, so the standalone build silently falls back
+  // to the procedural renderer while the served build looks correct.
+  const assetPattern = /assets\/(?:asset_[0-9]+_[a-f0-9]+|monsters\/[A-Za-z0-9_\-./]+)\.png/g;
   const assetPaths = [
     ...new Set(
       `${cssSource}\n${saveSystemSource}\n${worldContractsSource}\n${gameSource}`.match(

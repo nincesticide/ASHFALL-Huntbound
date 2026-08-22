@@ -1,0 +1,35 @@
+{
+  "source": {
+    "file": "source/road_wolf_approved_sheet.png",
+    "width": 1448,
+    "height": 1086
+  },
+  "layout": {
+    "columns": {
+      "idle": [105, 345],
+      "walk": [360, 596],
+      "attack": [605, 855],
+      "hit": [865, 1095],
+      "death": [1110, 1400]
+    },
+    "directionBands": {
+      "south": [100, 425],
+      "north": [440, 758],
+      "east": [770, 1048]
+    }
+  },
+  "selectionGuidance": {
+    "idle": "Select four coherent poses per direction; use only frames depicting the same wolf proportions and markings.",
+    "walk": "Select six frames per direction from the three displayed pose rows; keep the contact shadow and ground line stable.",
+    "attack": "Select six anticipation, lunge, impact and recovery poses; gameplay contact should visually align with frame 4.",
+    "hit": "Select three readable recoil frames.",
+    "death": "Select six progressive collapse frames and hold the last frame briefly."
+  },
+  "normalization": {
+    "cell": [128, 96],
+    "anchor": [64, 89],
+    "background": "transparent",
+    "imageSmoothing": false,
+    "west": "mirror east unless visual asymmetry requires a dedicated row"
+  }
+}

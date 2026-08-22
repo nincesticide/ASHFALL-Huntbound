@@ -21,7 +21,10 @@ test("the committed release bundle is byte-for-byte current and --check does not
     encoding: "utf8",
   });
   assert.equal(result.status, 0, result.stderr || result.stdout);
-  assert.match(result.stdout, /Verified .* byte-for-byte with 57 embedded assets/);
+  // 57 canonical assets/asset_*.png plus each monster atlas under assets/monsters/.
+  // Raise this deliberately when an atlas is added, so a sprite silently dropping
+  // out of the single-file release fails here instead of shipping.
+  assert.match(result.stdout, /Verified .* byte-for-byte with 58 embedded assets/);
   const afterBytes = await readFile(releasePath);
   const afterStat = await stat(releasePath);
   assert.deepEqual(afterBytes, beforeBytes);
