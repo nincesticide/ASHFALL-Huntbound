@@ -1,0 +1,66 @@
+name: Materialize approved animated Ash Goblin v1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - art/approved-ash-goblin-v1
+    paths:
+      - assets/monsters/common/ash_goblin/**
+      - tools/apply-approved-ash-goblin-v1.cjs
+      - tools/verify-approved-ash-goblin-v1.cjs
+      - tools/approved-ash-goblin-trigger.txt
+      - .github/workflows/materialize-approved-ash-goblin-v1.yml
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - codex/v014-source-migration
+    paths:
+      - assets/monsters/common/ash_goblin/**
+      - tools/apply-approved-ash-goblin-v1.cjs
+      - tools/verify-approved-ash-goblin-v1.cjs
+      - .github/workflows/materialize-approved-ash-goblin-v1.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: approved-ash-goblin-v1-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  integrate-and-verify:
+    if: github.actor != 'ashfall-art-bot'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out isolated art branch
+        uses: actions/checkout@v4
+        with:
+          ref: art/approved-ash-goblin-v1
+          fetch-depth: 0
+
+      - name: Apply visual-only goblin renderer integration
+        run: node tools/apply-approved-ash-goblin-v1.cjs
+
+      - name: Verify JavaScript syntax and art contract
+        run: |
+          node --check js/game.js
+          node tools/verify-approved-ash-goblin-v1.cjs
+
+      - name: Rebuild canonical QA/release artifact
+        run: npm run build
+
+      - name: Run full repository verification
+        run: npm test
+
+      - name: Commit materialized source and generated release files
+        run: |
+          git config user.name "ashfall-art-bot"
+          git config user.email "ashfall-art-bot@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Approved Ash Goblin integration is already materialized."
+          else
+            git commit -m "Integrate approved animated Ash Goblin v1 [skip ci]"
+            git push origin HEAD:art/approved-ash-goblin-v1
+          fi
